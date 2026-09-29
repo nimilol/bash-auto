@@ -1,0 +1,12 @@
+{
+  "name": "bash-auto",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ChatGPT Automation - Auto ChatGPT browser extension",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "node tests/e2e.mjs",
+    "check": "node tests/check.mjs"
+  }
+}

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mock ChatGPT</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  #prompt-textarea { border: 1px solid #999; min-height: 40px; padding: 6px; white-space: pre-wrap; }
+  article { border-bottom: 1px solid #ddd; padding: 8px 0; }
+  button { margin-top: 6px; }
+</style>
+</head>
+<body>
+  <!-- Minimal imitation of chatgpt.com's DOM, used by tests/e2e.mjs. -->
+  <main id="thread"></main>
+  <form onsubmit="return false">
+    <input type="file" accept="image/*" multiple hidden id="upload" />
+    <div id="attachments"></div>
+    <div id="prompt-textarea" contenteditable="true" class="ProseMirror"></div>
+    <button type="button" data-testid="send-button" id="send">Send</button>
+  </form>
+<script>
+  const thread = document.getElementById('thread');
+  const send = document.getElementById('send');
+  const box = document.getElementById('prompt-textarea');
+  const upload = document.getElementById('upload');
+  let attached = [];
+  let turnNo = 0;
+
+  upload.addEventListener('change', () => {
+    attached = [...upload.files].map((f) => f.name);
+    document.getElementById('attachments').textContent = attached.join(', ');
+  });
+
+  function imageBlobUrl() {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 512;
+    const g = c.getContext('2d');
+    g.fillStyle = '#3a7'; g.fillRect(0, 0, 512, 512);
+    return new Promise((r) => c.toBlob((b) => r(URL.createObjectURL(b)), 'image/png'));
+  }
+
+  send.addEventListener('click', async () => {
+    const prompt = box.innerText.trim();
+    if (!prompt) return;
+    box.innerHTML = '';
+    const files = attached; attached = [];
+    document.getElementById('attachments').textContent = '';
+
+    const user = document.createElement('article');
+    user.dataset.testid = `conversation-turn-${++turnNo}`;
+    user.innerHTML = '<div data-message-author-role="user"></div>';
+    user.firstChild.textContent = prompt;
+    thread.append(user);
+
+    const stop = document.createElement('button');
+    stop.dataset.testid = 'stop-button';
+    stop.textContent = 'Stop';
+    send.replaceWith(stop);
+
+    const bot = document.createElement('article');
+    bot.dataset.testid = `conversation-turn-${++turnNo}`;
+    bot.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"></div></div>';
+    thread.append(bot);
+    const md = bot.querySelector('.markdown');
+
+    const reply = /fail/i.test(prompt)
+      ? 'Something went wrong. Please try again later.'
+      : `Echo: ${prompt}` + (files.length ? ` [files: ${files.join(', ')}]` : '');
+    for (const word of reply.split(' ')) {
+      md.textContent += (md.textContent ? ' ' : '') + word;
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    if (/image/i.test(prompt) && !/fail/i.test(prompt)) {
+      const img = document.createElement('img');
+      img.alt = 'Generated image';
+      img.width = 512; img.height = 512;
+      img.src = await imageBlobUrl();
+      bot.append(img);
+    }
+    stop.replaceWith(send);
+  });
+</script>
+</body>
+</html>

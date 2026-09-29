@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatGPT Automation</title>
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="../icons/icon32.png" alt="" width="20" height="20" />
+      <span data-i18n="appTitle">ChatGPT Automation</span>
+    </div>
+    <select id="language" aria-label="Language"></select>
+  </header>
+
+  <main>
+    <!-- Mode -->
+    <section class="card">
+      <h2 data-i18n="modeHeading">Mode</h2>
+      <div class="tabs" role="tablist" id="modeTabs">
+        <button role="tab" data-mode="text" data-i18n="modeText">Text</button>
+        <button role="tab" data-mode="textToImage" data-i18n="modeTextToImage">Text → Image</button>
+        <button role="tab" data-mode="imageToImage" data-i18n="modeImageToImage">Image → Image</button>
+        <button role="tab" data-mode="ingredients" data-i18n="modeIngredients">Ingredients → Text</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+
+      <div class="mode-opts" data-for="text">
+        <label class="check"><input type="checkbox" data-setting="concat" /> <span data-i18n="concatLabel">Concat mode</span></label>
+        <p class="hint" data-i18n="concatHint"></p>
+      </div>
+
+      <div class="mode-opts" data-for="textToImage imageToImage">
+        <label class="field"><span data-i18n="aspectRatio">Aspect ratio</span>
+          <select data-setting="aspectRatio">
+            <option value="" data-i18n="aspectNone">Don't specify</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" data-setting="saveTextWithImages" /> <span data-i18n="saveTextWithImages">Also save the text reply</span></label>
+      </div>
+
+      <div class="mode-opts" data-for="imageToImage">
+        <label class="check"><input type="checkbox" data-setting="chain" /> <span data-i18n="chainLabel">Chain mode</span></label>
+        <p class="hint" data-i18n="chainHint"></p>
+        <div class="assets" data-asset="sourceImages">
+          <div class="assets-head">
+            <strong data-i18n="sourceImages">Source images</strong>
+            <label class="btn small"><input type="file" accept="image/*" multiple hidden /><span data-i18n="addImages">Add images</span></label>
+            <button class="btn small ghost" data-clear-assets data-i18n="clear">Clear</button>
+          </div>
+          <div class="thumbs"></div>
+        </div>
+      </div>
+
+      <div class="mode-opts" data-for="ingredients">
+        <label class="check"><input type="checkbox" data-setting="autoMatchIngredients" /> <span data-i18n="autoMatchLabel">Auto-add images by filename</span></label>
+        <p class="hint" data-i18n="autoMatchHint"></p>
+        <div class="assets" data-asset="ingredients">
+          <div class="assets-head">
+            <strong data-i18n="referenceImages">Reference images</strong>
+            <label class="btn small"><input type="file" accept="image/*" multiple hidden /><span data-i18n="addImages">Add images</span></label>
+            <button class="btn small ghost" data-clear-assets data-i18n="clear">Clear</button>
+          </div>
+          <div class="thumbs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Prompts -->
+    <section class="card">
+      <h2 data-i18n="promptsHeading">Prompts</h2>
+      <textarea id="promptInput" rows="6" data-i18n-placeholder="promptsPlaceholder"></textarea>
+      <p class="hint" data-i18n="promptsHint"></p>
+      <div class="row">
+        <button class="btn primary" id="addPrompts" data-i18n="addToQueue">Add to queue</button>
+        <label class="btn"><input type="file" id="importFile" accept=".txt,.csv,.md,text/plain,text/csv" hidden /><span data-i18n="importFile">Import .txt / .csv</span></label>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <details class="card" id="settingsCard">
+      <summary><h2 data-i18n="settingsHeading">Settings</h2></summary>
+      <div class="grid">
+        <label class="field"><span data-i18n="minDelay">Min delay (s)</span><input type="number" min="0" step="1" data-setting="minDelay" /></label>
+        <label class="field"><span data-i18n="maxDelay">Max delay (s)</span><input type="number" min="0" step="1" data-setting="maxDelay" /></label>
+        <label class="field"><span data-i18n="maxRetries">Max retries</span><input type="number" min="0" max="20" step="1" data-setting="maxRetries" /></label>
+        <label class="field"><span data-i18n="timeoutMinutes">Timeout per prompt (min)</span><input type="number" min="1" max="60" step="1" data-setting="timeoutMinutes" /></label>
+      </div>
+      <label class="check"><input type="checkbox" data-setting="newChatPerPrompt" /> <span data-i18n="newChatPerPrompt">New chat for every prompt</span></label>
+      <label class="check"><input type="checkbox" data-setting="newChatOnStart" /> <span data-i18n="newChatOnStart">Start a new chat when the run starts</span></label>
+      <hr />
+      <label class="check"><input type="checkbox" data-setting="autoDownload" /> <span data-i18n="autoDownload">Auto download results</span></label>
+      <label class="field"><span data-i18n="projectFolder">Project folder</span><input type="text" data-setting="project" /></label>
+      <label class="check"><input type="checkbox" data-setting="renameByPrompt" /> <span data-i18n="renameByPrompt">Name files after the prompt</span></label>
+      <p class="hint mono" id="filenamePreview"></p>
+    </details>
+
+    <!-- Queue -->
+    <section class="card">
+      <div class="queue-head">
+        <h2 data-i18n="queueHeading">Queue</h2>
+        <span class="status-pill" id="runnerStatus"></span>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
+      <p class="counts" id="counts"></p>
+      <div class="row wrap">
+        <button class="btn primary" id="startBtn" data-i18n="start">Start</button>
+        <button class="btn" id="pauseBtn" data-i18n="pause">Pause</button>
+        <button class="btn danger" id="stopBtn" data-i18n="stop">Stop</button>
+        <button class="btn ghost" id="retryFailedBtn" data-i18n="retryFailed">Retry failed</button>
+        <button class="btn ghost" id="resetBtn" data-i18n="resetAll">Reset all</button>
+        <button class="btn ghost" id="clearBtn" data-i18n="clearQueue">Clear queue</button>
+      </div>
+      <p class="hint" data-i18n="keepPanelOpen"></p>
+      <ol class="queue" id="queueList"></ol>
+      <p class="empty" id="queueEmpty" data-i18n="queueEmpty">No prompts yet.</p>
+    </section>
+
+    <!-- Log -->
+    <details class="card">
+      <summary><h2 data-i18n="logHeading">Activity log</h2></summary>
+      <ul class="log" id="log"></ul>
+    </details>
+  </main>
+
+  <template id="queueItemTpl">
+    <li class="qi">
+      <div class="qi-main">
+        <span class="qi-num"></span>
+        <span class="qi-prompt"></span>
+      </div>
+      <div class="qi-meta">
+        <span class="chip"></span>
+        <span class="qi-retries"></span>
+        <span class="qi-extra"></span>
+        <span class="spacer"></span>
+        <a class="qi-link" target="_blank" rel="noopener" data-i18n="openChat" hidden>Open chat</a>
+        <button class="icon-btn qi-rerun" data-i18n-title="rerun" aria-label="Re-run">↻</button>
+        <button class="icon-btn qi-remove" data-i18n-title="remove" aria-label="Remove">✕</button>
+      </div>
+      <p class="qi-error" hidden></p>
+    </li>
+  </template>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,1 +1,91 @@
-<h1>Hello</h1>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ChatGPT Automation</title>
+  <meta name="description" content="Auto ChatGPT for your prompts at scale. Batch generate and auto-download responses and images on ChatGPT.com." />
+  <link rel="icon" href="icons/icon32.png" />
+  <style>
+    :root { --bg: #f6f7f9; --card: #fff; --text: #1c1f24; --muted: #5d6673; --border: #e3e6ea; --accent: #10a37f; --accent-ink: #fff; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121417; --card: #1c1f23; --text: #e8eaed; --muted: #9aa1ab; --border: #2e3339; --accent: #19c37d; --accent-ink: #06130e; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+    header { padding: 20px 0; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+    .hero { display: grid; grid-template-columns: 1.2fr .8fr; gap: 40px; align-items: center; padding: 40px 0 56px; }
+    .hero h1 { font-size: clamp(32px, 5vw, 48px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -.02em; }
+    .hero p { color: var(--muted); font-size: 18px; margin: 0 0 24px; }
+    .hero img.shot { width: 100%; max-width: 340px; justify-self: center; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,.12); }
+    .btn { display: inline-block; padding: 12px 20px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+    .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); margin-left: 8px; }
+    h2 { font-size: 26px; margin: 0 0 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .card h3 { margin: 0 0 8px; font-size: 17px; }
+    .card p, .card li { color: var(--muted); font-size: 15px; margin: 0; }
+    .card ul { margin: 0; padding-left: 18px; }
+    section { padding: 32px 0; }
+    ol.steps { padding-left: 20px; color: var(--muted); }
+    ol.steps li { margin-bottom: 6px; }
+    .langs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .langs span { background: var(--card); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; font-size: 14px; }
+    footer { padding: 40px 0; color: var(--muted); font-size: 13px; }
+    @media (max-width: 760px) { .hero { grid-template-columns: 1fr; padding-top: 16px; } .btn.ghost { margin: 8px 0 0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header><img src="icons/icon32.png" alt="" width="28" height="28" /> ChatGPT Automation</header>
+
+    <div class="hero">
+      <div>
+        <h1>Auto ChatGPT for your prompts, at scale.</h1>
+        <p>Queue hundreds of prompts, then let ChatGPT Automation submit them, wait for each reply, and auto-download the text and images. Everything is sorted into project folders. No clicks. No babysitting.</p>
+        <a class="btn" href="#install">Install the extension</a>
+        <a class="btn ghost" href="#features">See features</a>
+      </div>
+      <img class="shot" src="docs/screenshot-panel.png" alt="ChatGPT Automation side panel" />
+    </div>
+
+    <section id="features">
+      <h2>What it does</h2>
+      <div class="grid">
+        <div class="card"><h3>🤖 Batch processing</h3><p>Queue dozens or hundreds of prompts. Each is submitted, waited on, saved, and the next one starts automatically.</p></div>
+        <div class="card"><h3>✍️ Text mode</h3><p>Batch text replies saved as Markdown. Concat mode chains prompts in one conversation for longer connected content.</p></div>
+        <div class="card"><h3>🖼️ Text → Image</h3><p>Generate many images in one run in 16:9, 9:16 or 1:1.</p></div>
+        <div class="card"><h3>🎨 Image → Image</h3><p>Batch transform images with prompts. Chain mode feeds each generated image into the next prompt.</p></div>
+        <div class="card"><h3>🧩 Ingredients → Text</h3><p>Send reference images with prompts. Characters are added automatically when their file name appears in the prompt.</p></div>
+        <div class="card"><h3>📊 Live queue</h3><p>Per-prompt status (Queued → Running → Completed), retry counter, and progress, all in the Side Panel.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Professional automation controls</h2>
+      <div class="grid">
+        <div class="card"><ul><li>Smart random delay with configurable min/max</li><li>Max retries on failure</li><li>Timeout per prompt</li></ul></div>
+        <div class="card"><ul><li>Auto download when generation completes</li><li>Project-based folders</li><li>Auto-rename files from the prompt</li></ul></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Multi-language</h2>
+      <div class="langs"><span>English</span><span>Tiếng Việt</span><span>中文</span><span>한국어</span><span>日本語</span><span>Español</span></div>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <ol class="steps">
+        <li>Download this repository and unzip it.</li>
+        <li>Open <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</li>
+        <li>Click <strong>Load unpacked</strong> and choose the folder that contains <code>manifest.json</code>.</li>
+        <li>Log in to chatgpt.com, click the extension icon, add prompts, and press <strong>Start</strong>.</li>
+      </ol>
+    </section>
+
+    <footer>Perfect for content creators, copywriters, AI image producers, and anyone who wants to automate ChatGPT. Not affiliated with OpenAI.</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,245 @@
+{
+  "extName": {
+    "message": "ChatGPT Automation - Tự động ChatGPT"
+  },
+  "extDescription": {
+    "message": "Tự động ChatGPT cho prompt hàng loạt. Tạo và tự động tải xuống câu trả lời và hình ảnh trên ChatGPT.com."
+  },
+  "appTitle": {
+    "message": "ChatGPT Automation"
+  },
+  "modeHeading": {
+    "message": "Chế độ"
+  },
+  "modeText": {
+    "message": "Văn bản"
+  },
+  "modeTextToImage": {
+    "message": "Văn bản → Ảnh"
+  },
+  "modeImageToImage": {
+    "message": "Ảnh → Ảnh"
+  },
+  "modeIngredients": {
+    "message": "Nguyên liệu → Văn bản"
+  },
+  "modeHint_text": {
+    "message": "Tạo câu trả lời văn bản cho từng prompt trong hàng đợi."
+  },
+  "modeHint_textToImage": {
+    "message": "Tạo ảnh từ mô tả văn bản. Mọi ảnh được tạo đều được tải xuống."
+  },
+  "modeHint_imageToImage": {
+    "message": "Gửi mỗi prompt kèm một ảnh gốc để biến đổi hoặc nâng cấp ảnh."
+  },
+  "modeHint_ingredients": {
+    "message": "Gửi ảnh tham chiếu kèm mỗi prompt và thu thập câu trả lời văn bản."
+  },
+  "concatLabel": {
+    "message": "Chế độ nối (Concat)"
+  },
+  "concatHint": {
+    "message": "Giữ tất cả prompt trong một cuộc trò chuyện để mỗi prompt tiếp nối câu trả lời trước. Cuối cùng sẽ lưu một tệp tổng hợp."
+  },
+  "aspectRatio": {
+    "message": "Tỉ lệ khung hình"
+  },
+  "aspectNone": {
+    "message": "Không chỉ định"
+  },
+  "saveTextWithImages": {
+    "message": "Lưu cả câu trả lời văn bản"
+  },
+  "chainLabel": {
+    "message": "Chế độ chuỗi (Chain)"
+  },
+  "chainHint": {
+    "message": "Dùng ảnh được tạo từ prompt trước làm đầu vào cho prompt tiếp theo."
+  },
+  "sourceImages": {
+    "message": "Ảnh gốc"
+  },
+  "addImages": {
+    "message": "Thêm ảnh"
+  },
+  "clear": {
+    "message": "Xóa"
+  },
+  "autoMatchLabel": {
+    "message": "Tự thêm ảnh theo tên tệp"
+  },
+  "autoMatchHint": {
+    "message": "Chỉ đính kèm ảnh có tên tệp xuất hiện trong prompt (vd. \"alice.png\" cho prompt nhắc đến Alice). Tắt = đính kèm tất cả."
+  },
+  "referenceImages": {
+    "message": "Ảnh tham chiếu"
+  },
+  "promptsHeading": {
+    "message": "Prompt"
+  },
+  "promptsPlaceholder": {
+    "message": "Mỗi dòng một prompt…\n\nHoặc tách prompt nhiều dòng bằng một dòng trống."
+  },
+  "promptsHint": {
+    "message": "Mỗi dòng là một prompt. Nếu có dòng trống, mỗi khối văn bản là một prompt."
+  },
+  "addToQueue": {
+    "message": "Thêm vào hàng đợi"
+  },
+  "importFile": {
+    "message": "Nhập .txt / .csv"
+  },
+  "settingsHeading": {
+    "message": "Cài đặt"
+  },
+  "minDelay": {
+    "message": "Độ trễ tối thiểu (giây)"
+  },
+  "maxDelay": {
+    "message": "Độ trễ tối đa (giây)"
+  },
+  "maxRetries": {
+    "message": "Số lần thử lại tối đa"
+  },
+  "timeoutMinutes": {
+    "message": "Thời gian chờ mỗi prompt (phút)"
+  },
+  "newChatPerPrompt": {
+    "message": "Tạo cuộc trò chuyện mới cho mỗi prompt"
+  },
+  "newChatOnStart": {
+    "message": "Tạo cuộc trò chuyện mới khi bắt đầu"
+  },
+  "autoDownload": {
+    "message": "Tự động tải kết quả"
+  },
+  "projectFolder": {
+    "message": "Thư mục dự án"
+  },
+  "renameByPrompt": {
+    "message": "Đặt tên tệp theo prompt"
+  },
+  "queueHeading": {
+    "message": "Hàng đợi"
+  },
+  "start": {
+    "message": "Bắt đầu"
+  },
+  "resume": {
+    "message": "Tiếp tục"
+  },
+  "pause": {
+    "message": "Tạm dừng"
+  },
+  "stop": {
+    "message": "Dừng"
+  },
+  "retryFailed": {
+    "message": "Chạy lại mục lỗi"
+  },
+  "resetAll": {
+    "message": "Đặt lại tất cả"
+  },
+  "clearQueue": {
+    "message": "Xóa hàng đợi"
+  },
+  "keepPanelOpen": {
+    "message": "Giữ bảng này mở khi hàng đợi đang chạy. Bạn cần đăng nhập chatgpt.com."
+  },
+  "queueEmpty": {
+    "message": "Chưa có prompt. Hãy thêm ở trên."
+  },
+  "logHeading": {
+    "message": "Nhật ký hoạt động"
+  },
+  "openChat": {
+    "message": "Mở cuộc trò chuyện"
+  },
+  "rerun": {
+    "message": "Chạy lại"
+  },
+  "remove": {
+    "message": "Xóa"
+  },
+  "status_queued": {
+    "message": "Đang chờ"
+  },
+  "status_running": {
+    "message": "Đang chạy"
+  },
+  "status_completed": {
+    "message": "Hoàn thành"
+  },
+  "status_failed": {
+    "message": "Thất bại"
+  },
+  "retriesCount": {
+    "message": "Thử lại {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} ảnh"
+  },
+  "countsLine": {
+    "message": "{0}/{1} hoàn thành · {2} đang chạy · {3} đang chờ · {4} thất bại · {5}%"
+  },
+  "runnerIdle": {
+    "message": "Rảnh"
+  },
+  "runnerRunning": {
+    "message": "Đang chạy…"
+  },
+  "runnerPausing": {
+    "message": "Sẽ tạm dừng sau prompt này…"
+  },
+  "runnerWaiting": {
+    "message": "Prompt tiếp theo sau {0} giây"
+  },
+  "samplePrompt": {
+    "message": "căn nhà gỗ ấm cúng trong tuyết"
+  },
+  "downloadsFolder": {
+    "message": "Downloads"
+  },
+  "confirmClear": {
+    "message": "Xóa tất cả prompt khỏi hàng đợi?"
+  },
+  "logStarted": {
+    "message": "Đã bắt đầu hàng đợi."
+  },
+  "logFinished": {
+    "message": "Hàng đợi đã hoàn tất."
+  },
+  "logPausing": {
+    "message": "Sẽ tạm dừng sau prompt hiện tại."
+  },
+  "logStopped": {
+    "message": "Đã dừng."
+  },
+  "logRunning": {
+    "message": "Đang chạy prompt #{0}…"
+  },
+  "logCompleted": {
+    "message": "Prompt #{0} đã hoàn thành."
+  },
+  "logRetrying": {
+    "message": "Prompt #{0} lỗi: {1} — sẽ thử lại ({2}/{3})."
+  },
+  "logFailed": {
+    "message": "Prompt #{0} lỗi: {1} — bỏ qua sau {2} lần thử."
+  },
+  "logDownloaded": {
+    "message": "Đã lưu {0}"
+  },
+  "logDownloadFailed": {
+    "message": "Không thể lưu {0}: {1}"
+  },
+  "logFatal": {
+    "message": "Đã dừng chạy: {0}"
+  },
+  "logAdded": {
+    "message": "Đã thêm {0} prompt vào hàng đợi."
+  },
+  "logNoPrompts": {
+    "message": "Không tìm thấy prompt nào."
+  }
+}

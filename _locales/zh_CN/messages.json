@@ -1,0 +1,245 @@
+{
+  "extName": {
+    "message": "ChatGPT Automation - 自动 ChatGPT"
+  },
+  "extDescription": {
+    "message": "批量自动运行 ChatGPT 提示词。在 ChatGPT.com 上批量生成并自动下载回复和图片。"
+  },
+  "appTitle": {
+    "message": "ChatGPT Automation"
+  },
+  "modeHeading": {
+    "message": "模式"
+  },
+  "modeText": {
+    "message": "文本"
+  },
+  "modeTextToImage": {
+    "message": "文本 → 图片"
+  },
+  "modeImageToImage": {
+    "message": "图片 → 图片"
+  },
+  "modeIngredients": {
+    "message": "素材 → 文本"
+  },
+  "modeHint_text": {
+    "message": "为队列中的每个提示词生成文本回复。"
+  },
+  "modeHint_textToImage": {
+    "message": "根据文字描述生成图片，所有生成的图片都会被下载。"
+  },
+  "modeHint_imageToImage": {
+    "message": "每个提示词都会附带一张源图片，用于转换或增强图片。"
+  },
+  "modeHint_ingredients": {
+    "message": "每个提示词都会附带参考图片，并收集文本回复。"
+  },
+  "concatLabel": {
+    "message": "串联模式（Concat）"
+  },
+  "concatHint": {
+    "message": "所有提示词保留在同一个对话中，每条都基于上一条回复继续。结束时保存一个合并文件。"
+  },
+  "aspectRatio": {
+    "message": "宽高比"
+  },
+  "aspectNone": {
+    "message": "不指定"
+  },
+  "saveTextWithImages": {
+    "message": "同时保存文本回复"
+  },
+  "chainLabel": {
+    "message": "链式模式（Chain）"
+  },
+  "chainHint": {
+    "message": "将上一个提示词生成的图片作为下一个提示词的输入。"
+  },
+  "sourceImages": {
+    "message": "源图片"
+  },
+  "addImages": {
+    "message": "添加图片"
+  },
+  "clear": {
+    "message": "清除"
+  },
+  "autoMatchLabel": {
+    "message": "按文件名自动添加图片"
+  },
+  "autoMatchHint": {
+    "message": "仅附加文件名出现在提示词中的图片（例如提示词提到 Alice 时附加 \"alice.png\"）。关闭 = 附加全部。"
+  },
+  "referenceImages": {
+    "message": "参考图片"
+  },
+  "promptsHeading": {
+    "message": "提示词"
+  },
+  "promptsPlaceholder": {
+    "message": "每行一个提示词…\n\n或用空行分隔多行提示词。"
+  },
+  "promptsHint": {
+    "message": "每行一个提示词。如果文本包含空行，则每个段落为一个提示词。"
+  },
+  "addToQueue": {
+    "message": "加入队列"
+  },
+  "importFile": {
+    "message": "导入 .txt / .csv"
+  },
+  "settingsHeading": {
+    "message": "设置"
+  },
+  "minDelay": {
+    "message": "最小延迟（秒）"
+  },
+  "maxDelay": {
+    "message": "最大延迟（秒）"
+  },
+  "maxRetries": {
+    "message": "最大重试次数"
+  },
+  "timeoutMinutes": {
+    "message": "每个提示词超时（分钟）"
+  },
+  "newChatPerPrompt": {
+    "message": "每个提示词新建对话"
+  },
+  "newChatOnStart": {
+    "message": "开始运行时新建对话"
+  },
+  "autoDownload": {
+    "message": "自动下载结果"
+  },
+  "projectFolder": {
+    "message": "项目文件夹"
+  },
+  "renameByPrompt": {
+    "message": "按提示词命名文件"
+  },
+  "queueHeading": {
+    "message": "队列"
+  },
+  "start": {
+    "message": "开始"
+  },
+  "resume": {
+    "message": "继续"
+  },
+  "pause": {
+    "message": "暂停"
+  },
+  "stop": {
+    "message": "停止"
+  },
+  "retryFailed": {
+    "message": "重试失败项"
+  },
+  "resetAll": {
+    "message": "全部重置"
+  },
+  "clearQueue": {
+    "message": "清空队列"
+  },
+  "keepPanelOpen": {
+    "message": "队列运行期间请保持此面板打开，并确保已登录 chatgpt.com。"
+  },
+  "queueEmpty": {
+    "message": "还没有提示词，请在上方添加。"
+  },
+  "logHeading": {
+    "message": "活动日志"
+  },
+  "openChat": {
+    "message": "打开对话"
+  },
+  "rerun": {
+    "message": "重新运行"
+  },
+  "remove": {
+    "message": "移除"
+  },
+  "status_queued": {
+    "message": "排队中"
+  },
+  "status_running": {
+    "message": "运行中"
+  },
+  "status_completed": {
+    "message": "已完成"
+  },
+  "status_failed": {
+    "message": "失败"
+  },
+  "retriesCount": {
+    "message": "重试 {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} 张图片"
+  },
+  "countsLine": {
+    "message": "已完成 {0}/{1} · 运行中 {2} · 排队 {3} · 失败 {4} · {5}%"
+  },
+  "runnerIdle": {
+    "message": "空闲"
+  },
+  "runnerRunning": {
+    "message": "运行中…"
+  },
+  "runnerPausing": {
+    "message": "本条完成后暂停…"
+  },
+  "runnerWaiting": {
+    "message": "{0} 秒后运行下一条"
+  },
+  "samplePrompt": {
+    "message": "雪中温馨的小木屋"
+  },
+  "downloadsFolder": {
+    "message": "下载"
+  },
+  "confirmClear": {
+    "message": "确定要清空队列中的所有提示词吗？"
+  },
+  "logStarted": {
+    "message": "队列已开始。"
+  },
+  "logFinished": {
+    "message": "队列已完成。"
+  },
+  "logPausing": {
+    "message": "将在当前提示词完成后暂停。"
+  },
+  "logStopped": {
+    "message": "已停止。"
+  },
+  "logRunning": {
+    "message": "正在运行提示词 #{0}…"
+  },
+  "logCompleted": {
+    "message": "提示词 #{0} 已完成。"
+  },
+  "logRetrying": {
+    "message": "提示词 #{0} 失败：{1} — 将重试（{2}/{3}）。"
+  },
+  "logFailed": {
+    "message": "提示词 #{0} 失败：{1} — 已尝试 {2} 次，放弃。"
+  },
+  "logDownloaded": {
+    "message": "已保存 {0}"
+  },
+  "logDownloadFailed": {
+    "message": "无法保存 {0}：{1}"
+  },
+  "logFatal": {
+    "message": "运行已停止：{0}"
+  },
+  "logAdded": {
+    "message": "已将 {0} 个提示词加入队列。"
+  },
+  "logNoPrompts": {
+    "message": "未找到提示词。"
+  }
+}

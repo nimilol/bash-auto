@@ -1,0 +1,245 @@
+{
+  "extName": {
+    "message": "ChatGPT Automation - 自動 ChatGPT"
+  },
+  "extDescription": {
+    "message": "大量のプロンプトを自動で ChatGPT に。ChatGPT.com で回答と画像を一括生成し、自動ダウンロードします。"
+  },
+  "appTitle": {
+    "message": "ChatGPT Automation"
+  },
+  "modeHeading": {
+    "message": "モード"
+  },
+  "modeText": {
+    "message": "テキスト"
+  },
+  "modeTextToImage": {
+    "message": "テキスト → 画像"
+  },
+  "modeImageToImage": {
+    "message": "画像 → 画像"
+  },
+  "modeIngredients": {
+    "message": "素材 → テキスト"
+  },
+  "modeHint_text": {
+    "message": "キュー内の各プロンプトに対してテキストの回答を生成します。"
+  },
+  "modeHint_textToImage": {
+    "message": "テキストの説明から画像を生成します。生成された画像はすべてダウンロードされます。"
+  },
+  "modeHint_imageToImage": {
+    "message": "各プロンプトを元画像と一緒に送信し、画像を変換・補正します。"
+  },
+  "modeHint_ingredients": {
+    "message": "各プロンプトに参考画像を添付して送信し、テキストの回答を集めます。"
+  },
+  "concatLabel": {
+    "message": "連結モード（Concat）"
+  },
+  "concatHint": {
+    "message": "すべてのプロンプトを 1 つの会話で実行し、前の回答を引き継ぎます。最後にまとめたファイルを保存します。"
+  },
+  "aspectRatio": {
+    "message": "アスペクト比"
+  },
+  "aspectNone": {
+    "message": "指定しない"
+  },
+  "saveTextWithImages": {
+    "message": "テキストの回答も保存"
+  },
+  "chainLabel": {
+    "message": "チェーンモード（Chain）"
+  },
+  "chainHint": {
+    "message": "前のプロンプトで生成された画像を次のプロンプトの入力として使います。"
+  },
+  "sourceImages": {
+    "message": "元画像"
+  },
+  "addImages": {
+    "message": "画像を追加"
+  },
+  "clear": {
+    "message": "クリア"
+  },
+  "autoMatchLabel": {
+    "message": "ファイル名で画像を自動追加"
+  },
+  "autoMatchHint": {
+    "message": "ファイル名がプロンプト内に含まれる画像だけを添付します（例：Alice に触れるプロンプトには \"alice.png\"）。オフ＝すべて添付。"
+  },
+  "referenceImages": {
+    "message": "参考画像"
+  },
+  "promptsHeading": {
+    "message": "プロンプト"
+  },
+  "promptsPlaceholder": {
+    "message": "1 行に 1 つのプロンプト…\n\n複数行のプロンプトは空行で区切ります。"
+  },
+  "promptsHint": {
+    "message": "1 行に 1 プロンプト。空行がある場合は、各ブロックが 1 プロンプトになります。"
+  },
+  "addToQueue": {
+    "message": "キューに追加"
+  },
+  "importFile": {
+    "message": ".txt / .csv を読み込む"
+  },
+  "settingsHeading": {
+    "message": "設定"
+  },
+  "minDelay": {
+    "message": "最小待機（秒）"
+  },
+  "maxDelay": {
+    "message": "最大待機（秒）"
+  },
+  "maxRetries": {
+    "message": "最大リトライ回数"
+  },
+  "timeoutMinutes": {
+    "message": "プロンプトごとのタイムアウト（分）"
+  },
+  "newChatPerPrompt": {
+    "message": "プロンプトごとに新しいチャット"
+  },
+  "newChatOnStart": {
+    "message": "実行開始時に新しいチャット"
+  },
+  "autoDownload": {
+    "message": "結果を自動ダウンロード"
+  },
+  "projectFolder": {
+    "message": "プロジェクトフォルダ"
+  },
+  "renameByPrompt": {
+    "message": "プロンプトからファイル名を付ける"
+  },
+  "queueHeading": {
+    "message": "キュー"
+  },
+  "start": {
+    "message": "開始"
+  },
+  "resume": {
+    "message": "再開"
+  },
+  "pause": {
+    "message": "一時停止"
+  },
+  "stop": {
+    "message": "停止"
+  },
+  "retryFailed": {
+    "message": "失敗分を再実行"
+  },
+  "resetAll": {
+    "message": "すべてリセット"
+  },
+  "clearQueue": {
+    "message": "キューを空にする"
+  },
+  "keepPanelOpen": {
+    "message": "キューの実行中はこのパネルを開いたままにしてください。chatgpt.com へのログインが必要です。"
+  },
+  "queueEmpty": {
+    "message": "プロンプトがありません。上で追加してください。"
+  },
+  "logHeading": {
+    "message": "アクティビティログ"
+  },
+  "openChat": {
+    "message": "チャットを開く"
+  },
+  "rerun": {
+    "message": "もう一度実行"
+  },
+  "remove": {
+    "message": "削除"
+  },
+  "status_queued": {
+    "message": "待機中"
+  },
+  "status_running": {
+    "message": "実行中"
+  },
+  "status_completed": {
+    "message": "完了"
+  },
+  "status_failed": {
+    "message": "失敗"
+  },
+  "retriesCount": {
+    "message": "リトライ {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "画像 {0} 枚"
+  },
+  "countsLine": {
+    "message": "完了 {0}/{1} · 実行中 {2} · 待機 {3} · 失敗 {4} · {5}%"
+  },
+  "runnerIdle": {
+    "message": "待機"
+  },
+  "runnerRunning": {
+    "message": "実行中…"
+  },
+  "runnerPausing": {
+    "message": "このプロンプトの後に一時停止…"
+  },
+  "runnerWaiting": {
+    "message": "次のプロンプトまで {0} 秒"
+  },
+  "samplePrompt": {
+    "message": "雪の中の居心地のよい小屋"
+  },
+  "downloadsFolder": {
+    "message": "ダウンロード"
+  },
+  "confirmClear": {
+    "message": "キューからすべてのプロンプトを削除しますか？"
+  },
+  "logStarted": {
+    "message": "キューを開始しました。"
+  },
+  "logFinished": {
+    "message": "キューが完了しました。"
+  },
+  "logPausing": {
+    "message": "現在のプロンプトの後に一時停止します。"
+  },
+  "logStopped": {
+    "message": "停止しました。"
+  },
+  "logRunning": {
+    "message": "プロンプト #{0} を実行中…"
+  },
+  "logCompleted": {
+    "message": "プロンプト #{0} が完了しました。"
+  },
+  "logRetrying": {
+    "message": "プロンプト #{0} 失敗：{1} — 再試行します（{2}/{3}）。"
+  },
+  "logFailed": {
+    "message": "プロンプト #{0} 失敗：{1} — {2} 回試行して中止しました。"
+  },
+  "logDownloaded": {
+    "message": "{0} を保存しました"
+  },
+  "logDownloadFailed": {
+    "message": "{0} を保存できません：{1}"
+  },
+  "logFatal": {
+    "message": "実行を停止しました：{0}"
+  },
+  "logAdded": {
+    "message": "{0} 件のプロンプトをキューに追加しました。"
+  },
+  "logNoPrompts": {
+    "message": "プロンプトが見つかりません。"
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "extName": {
+    "message": "ChatGPT Automation - Auto ChatGPT"
+  },
+  "extDescription": {
+    "message": "Auto ChatGPT para tus prompts a escala. Genera en lote y descarga automáticamente respuestas e imágenes en ChatGPT.com."
+  },
+  "appTitle": {
+    "message": "ChatGPT Automation"
+  },
+  "modeHeading": {
+    "message": "Modo"
+  },
+  "modeText": {
+    "message": "Texto"
+  },
+  "modeTextToImage": {
+    "message": "Texto → Imagen"
+  },
+  "modeImageToImage": {
+    "message": "Imagen → Imagen"
+  },
+  "modeIngredients": {
+    "message": "Ingredientes → Texto"
+  },
+  "modeHint_text": {
+    "message": "Genera una respuesta de texto para cada prompt de la cola."
+  },
+  "modeHint_textToImage": {
+    "message": "Genera imágenes a partir de descripciones de texto. Se descargan todas las imágenes generadas."
+  },
+  "modeHint_imageToImage": {
+    "message": "Envía cada prompt junto con una imagen de origen para transformarla o mejorarla."
+  },
+  "modeHint_ingredients": {
+    "message": "Envía imágenes de referencia con cada prompt y recopila las respuestas de texto."
+  },
+  "concatLabel": {
+    "message": "Modo Concat"
+  },
+  "concatHint": {
+    "message": "Mantiene todos los prompts en una sola conversación para que cada uno continúe la respuesta anterior. Al final se guarda un archivo combinado."
+  },
+  "aspectRatio": {
+    "message": "Relación de aspecto"
+  },
+  "aspectNone": {
+    "message": "No especificar"
+  },
+  "saveTextWithImages": {
+    "message": "Guardar también la respuesta de texto"
+  },
+  "chainLabel": {
+    "message": "Modo cadena (Chain)"
+  },
+  "chainHint": {
+    "message": "Usa la imagen generada por el prompt anterior como entrada del siguiente."
+  },
+  "sourceImages": {
+    "message": "Imágenes de origen"
+  },
+  "addImages": {
+    "message": "Añadir imágenes"
+  },
+  "clear": {
+    "message": "Borrar"
+  },
+  "autoMatchLabel": {
+    "message": "Añadir imágenes por nombre de archivo"
+  },
+  "autoMatchHint": {
+    "message": "Solo adjunta imágenes cuyo nombre aparece en el prompt (p. ej. \"alice.png\" si el prompt menciona a Alice). Desactivado = adjuntar todas."
+  },
+  "referenceImages": {
+    "message": "Imágenes de referencia"
+  },
+  "promptsHeading": {
+    "message": "Prompts"
+  },
+  "promptsPlaceholder": {
+    "message": "Un prompt por línea…\n\nO separa prompts de varias líneas con una línea en blanco."
+  },
+  "promptsHint": {
+    "message": "Un prompt por línea. Si el texto contiene líneas en blanco, cada bloque es un prompt."
+  },
+  "addToQueue": {
+    "message": "Añadir a la cola"
+  },
+  "importFile": {
+    "message": "Importar .txt / .csv"
+  },
+  "settingsHeading": {
+    "message": "Ajustes"
+  },
+  "minDelay": {
+    "message": "Retraso mínimo (s)"
+  },
+  "maxDelay": {
+    "message": "Retraso máximo (s)"
+  },
+  "maxRetries": {
+    "message": "Reintentos máximos"
+  },
+  "timeoutMinutes": {
+    "message": "Tiempo límite por prompt (min)"
+  },
+  "newChatPerPrompt": {
+    "message": "Nuevo chat para cada prompt"
+  },
+  "newChatOnStart": {
+    "message": "Nuevo chat al iniciar la ejecución"
+  },
+  "autoDownload": {
+    "message": "Descargar resultados automáticamente"
+  },
+  "projectFolder": {
+    "message": "Carpeta del proyecto"
+  },
+  "renameByPrompt": {
+    "message": "Nombrar archivos según el prompt"
+  },
+  "queueHeading": {
+    "message": "Cola"
+  },
+  "start": {
+    "message": "Iniciar"
+  },
+  "resume": {
+    "message": "Reanudar"
+  },
+  "pause": {
+    "message": "Pausar"
+  },
+  "stop": {
+    "message": "Detener"
+  },
+  "retryFailed": {
+    "message": "Reintentar fallidos"
+  },
+  "resetAll": {
+    "message": "Restablecer todo"
+  },
+  "clearQueue": {
+    "message": "Vaciar cola"
+  },
+  "keepPanelOpen": {
+    "message": "Mantén este panel abierto mientras se ejecuta la cola. Debes haber iniciado sesión en chatgpt.com."
+  },
+  "queueEmpty": {
+    "message": "Aún no hay prompts. Añade algunos arriba."
+  },
+  "logHeading": {
+    "message": "Registro de actividad"
+  },
+  "openChat": {
+    "message": "Abrir chat"
+  },
+  "rerun": {
+    "message": "Ejecutar de nuevo"
+  },
+  "remove": {
+    "message": "Quitar"
+  },
+  "status_queued": {
+    "message": "En cola"
+  },
+  "status_running": {
+    "message": "En curso"
+  },
+  "status_completed": {
+    "message": "Completado"
+  },
+  "status_failed": {
+    "message": "Fallido"
+  },
+  "retriesCount": {
+    "message": "Reintentos {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} imagen(es)"
+  },
+  "countsLine": {
+    "message": "{0}/{1} completados · {2} en curso · {3} en cola · {4} fallidos · {5}%"
+  },
+  "runnerIdle": {
+    "message": "Inactivo"
+  },
+  "runnerRunning": {
+    "message": "Ejecutando…"
+  },
+  "runnerPausing": {
+    "message": "Pausando tras este prompt…"
+  },
+  "runnerWaiting": {
+    "message": "Siguiente prompt en {0} s"
+  },
+  "samplePrompt": {
+    "message": "una cabaña acogedora en la nieve"
+  },
+  "downloadsFolder": {
+    "message": "Descargas"
+  },
+  "confirmClear": {
+    "message": "¿Quitar todos los prompts de la cola?"
+  },
+  "logStarted": {
+    "message": "Cola iniciada."
+  },
+  "logFinished": {
+    "message": "Cola terminada."
+  },
+  "logPausing": {
+    "message": "Se pausará tras el prompt actual."
+  },
+  "logStopped": {
+    "message": "Detenido."
+  },
+  "logRunning": {
+    "message": "Ejecutando prompt n.º {0}…"
+  },
+  "logCompleted": {
+    "message": "Prompt n.º {0} completado."
+  },
+  "logRetrying": {
+    "message": "El prompt n.º {0} falló: {1} — se reintentará ({2}/{3})."
+  },
+  "logFailed": {
+    "message": "El prompt n.º {0} falló: {1} — se abandona tras {2} intento(s)."
+  },
+  "logDownloaded": {
+    "message": "Guardado {0}"
+  },
+  "logDownloadFailed": {
+    "message": "No se pudo guardar {0}: {1}"
+  },
+  "logFatal": {
+    "message": "Ejecución detenida: {0}"
+  },
+  "logAdded": {
+    "message": "Se añadieron {0} prompt(s) a la cola."
+  },
+  "logNoPrompts": {
+    "message": "No se encontraron prompts."
+  }
+}
