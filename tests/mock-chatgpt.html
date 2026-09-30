@@ -20,6 +20,7 @@
     - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
       "slow" -> long streaming.
   -->
+  <nav><a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a></nav>
   <main id="thread"></main>
   <form onsubmit="return false">
     <input type="file" accept="image/*" multiple hidden id="upload" />
@@ -40,6 +41,18 @@
   let attached = [];
   let turnNo = 0;
   let convId = (location.pathname.match(/\/c\/([\w-]+)/) || [])[1] || null;
+
+  // Count real page loads (a client-side "New chat" must not add one).
+  db.set('pageLoads', db.get('pageLoads', 0) + 1);
+
+  // Client-side "New chat", like the real site: no page reload.
+  document.getElementById('newChat').addEventListener('click', (e) => {
+    e.preventDefault();
+    history.pushState(null, '', '/');
+    convId = null;
+    turnNo = 0;
+    thread.replaceChildren();
+  });
 
   upload.addEventListener('change', () => {
     attached = [...upload.files].map((f) => f.name);

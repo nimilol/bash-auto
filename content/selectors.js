@@ -1,6 +1,7 @@
 // Every chatgpt.com DOM selector used by the driver lives here.
 // When ChatGPT ships a UI change, this is usually the only file that needs patching.
 globalThis.CGA_SELECTORS = {
+  newChatButton: ['[data-testid="create-new-chat-button"]', 'a[href="/"][data-discover]', 'button[aria-label*="New chat"]', 'a[aria-label*="New chat"]', 'nav a[href="/"]'],
   composer: ['#prompt-textarea', 'div[contenteditable="true"].ProseMirror', 'textarea[name="prompt-textarea"]', 'form textarea'],
   sendButton: ['[data-testid="send-button"]', 'button[aria-label="Send prompt"]', 'button[aria-label*="Send"]', '#composer-submit-button'],
   stopButton: ['[data-testid="stop-button"]', 'button[aria-label="Stop streaming"]', 'button[aria-label*="Stop"]'],

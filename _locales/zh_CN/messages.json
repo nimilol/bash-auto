@@ -280,5 +280,8 @@
   },
   "logNewSession": {
     "message": "下次运行将开始新的会话对话。"
+  },
+  "logTimings": {
+    "message": "提示词 #{0}：对话准备用时 {1} 秒，回复用时 {2} 秒。"
   }
 }

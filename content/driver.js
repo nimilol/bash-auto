@@ -219,6 +219,24 @@
     }
   }
 
+  /**
+   * Switch to an empty chat without reloading the page: nothing to do when the page is
+   * already blank, otherwise click ChatGPT's own "New chat" control (client-side navigation).
+   */
+  async function newChat() {
+    const blank = () => !/\/c\/[\w-]+/.test(location.pathname) && turns().length === 0 && !!composer();
+    if (blank()) return true;
+    const btn = q(S().newChatButton);
+    if (!btn) return false;
+    btn.click();
+    try {
+      await waitFor(blank, { timeout: 8000, interval: 150, label: 'a new chat' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function isConversationMissing() {
     const text = flat(document.body.innerText).slice(0, 4000);
     return ['conversation not found', 'unable to load conversation', "couldn't load conversation"].some((p) => text.includes(p));
@@ -317,8 +335,18 @@
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('CGA_')) return false;
       if (msg.type === 'CGA_PING') {
-        sendResponse({ ok: true, ready: !!composer(), url: location.href, missing: isConversationMissing() });
+        sendResponse({
+          ok: true,
+          ready: !!composer(),
+          url: location.href,
+          missing: isConversationMissing(),
+          loadedAt: performance.timeOrigin, // when this page load started (tells a fresh page from the old one)
+        });
         return false;
+      }
+      if (msg.type === 'CGA_NEW_CHAT') {
+        newChat().then((ok) => sendResponse({ ok, url: location.href }));
+        return true;
       }
       if (msg.type === 'CGA_STOP') {
         const stop = q(S().stopButton);

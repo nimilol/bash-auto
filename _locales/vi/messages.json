@@ -280,5 +280,8 @@
   },
   "logNewSession": {
     "message": "Lần chạy tiếp theo sẽ bắt đầu cuộc trò chuyện phiên mới."
+  },
+  "logTimings": {
+    "message": "Prompt #{0}: cuộc trò chuyện sẵn sàng sau {1} giây, trả lời sau {2} giây."
   }
 }

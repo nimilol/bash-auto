@@ -280,5 +280,8 @@
   },
   "logNewSession": {
     "message": "La próxima ejecución empezará un nuevo chat de sesión."
+  },
+  "logTimings": {
+    "message": "Prompt n.º {0}: chat listo en {1} s, respuesta en {2} s."
   }
 }

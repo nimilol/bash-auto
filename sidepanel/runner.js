@@ -118,9 +118,12 @@ export class Runner {
       this.log('info', 'logRunning', [item.index + 1]);
 
       let result;
+      const t0 = Date.now();
+      let tReady = 0;
       try {
         const request = buildRequest(item, { ...settings, queueLength: queue.length }, assets, { previousImage });
         const tabId = await this.openChat(settings, firstInRun, reloadChat);
+        tReady = Date.now();
         firstInRun = false;
         reloadChat = false;
         result = await this.send(tabId, {
@@ -156,6 +159,7 @@ export class Runner {
         this.changed();
         if (result.resumed) this.log('info', 'logResumed', [current.index + 1]);
         this.log('success', 'logCompleted', [current.index + 1]);
+        this.log('info', 'logTimings', [current.index + 1, secs(tReady - t0), secs(Date.now() - tReady)]);
         if (settings.autoDownload) await this.download(current, result, settings);
       } else if (result.refused) {
         // Policy refusal: retry a limited number of times, then skip straight to the next prompt.
@@ -254,22 +258,27 @@ export class Runner {
       }
     }
 
+    // After a navigation, only a ping from the new page counts (freshAfter), and we move on as soon
+    // as its prompt box exists — chatgpt.com rarely reaches "complete" quickly, so never wait for it.
     const url = target || CHAT_URL;
+    let freshAfter = 0;
     if (!tab) {
+      freshAfter = Date.now();
       tab = await chrome.tabs.create({ url, active: true });
-      await waitForTabLoad(tab.id);
     } else if (targetId && conversationId(tab.url) !== targetId) {
       this.log('info', 'logReturningToChat');
-      await navigate(tab.id, url);
+      freshAfter = await navigate(tab.id, url);
     } else if (newChat) {
-      await navigate(tab.id, CHAT_URL);
+      // Reuse the page: blank already, or switch with ChatGPT's own "New chat" (no reload).
+      if (!(await this.softNewChat(tab.id))) freshAfter = await navigate(tab.id, CHAT_URL);
     } else if (reload) {
-      const loaded = waitForTabLoad(tab.id, { expectNavigation: true });
+      freshAfter = Date.now();
+      const started = waitForNavigation(tab.id);
       await chrome.tabs.reload(tab.id);
-      await loaded;
+      await started;
     }
     this.tabId = tab.id;
-    const page = await this.ensureDriver(tab.id);
+    const page = await this.ensureDriver(tab.id, { freshAfter });
     if (targetId && (page.missing || conversationId(page.url) !== targetId)) {
       const err = new Error('The session chat could not be opened');
       err.sessionLost = true;
@@ -297,12 +306,24 @@ export class Runner {
     });
   }
 
-  async ensureDriver(tabId) {
+  async softNewChat(tabId) {
+    try {
+      await this.ensureDriver(tabId);
+      const res = await chrome.tabs.sendMessage(tabId, { type: 'CGA_NEW_CHAT' });
+      return !!res?.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Wait until the tab's driver answers and the prompt box exists (polled every 300 ms). */
+  async ensureDriver(tabId, { freshAfter = 0 } = {}) {
     const end = Date.now() + 30000;
     let lastInjection = 0;
     while (Date.now() < end) {
       const res = await chrome.tabs.sendMessage(tabId, { type: 'CGA_PING' }).catch(() => null);
-      if (res?.ok && res.ready) return res;
+      const fresh = !freshAfter || (res?.loadedAt || 0) >= freshAfter - 500;
+      if (res?.ok && res.ready && fresh) return res;
       // No listener: the declarative content script didn't run (tab opened before install,
       // or injection raced navigation). Inject it ourselves; the driver guards against doubles.
       if (!res && Date.now() - lastInjection > 3000) {
@@ -311,7 +332,7 @@ export class Runner {
           .executeScript({ target: { tabId }, files: ['content/selectors.js', 'content/driver.js'] })
           .catch(() => {});
       }
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 300));
     }
     throw new Error('ChatGPT page is not ready (are you logged in?)');
   }
@@ -358,35 +379,33 @@ export class Runner {
   }
 }
 
+/** Start loading url in the tab; resolves once loading has begun. Returns the navigation start time. */
 async function navigate(tabId, url) {
-  const loaded = waitForTabLoad(tabId, { expectNavigation: true });
+  const startedAt = Date.now();
+  const started = waitForNavigation(tabId);
   await chrome.tabs.update(tabId, { url, active: true });
-  await loaded;
+  await started;
+  return startedAt;
 }
+
+const secs = (ms) => (Math.max(0, ms) / 1000).toFixed(1);
 
 function textDataUrl(text) {
   return `data:text/markdown;charset=utf-8,${encodeURIComponent(text)}`;
 }
 
-/** Resolve once the tab finishes loading. Attach before navigating when expectNavigation is set. */
-function waitForTabLoad(tabId, { timeout = 45000, expectNavigation = false } = {}) {
+/** Resolve as soon as the tab starts loading a new page (or after 5 s). Attach before navigating. */
+function waitForNavigation(tabId, timeout = 5000) {
   return new Promise((resolve) => {
-    let done = false;
     const timer = setTimeout(finish, timeout);
     function finish() {
-      if (done) return;
-      done = true;
       clearTimeout(timer);
       chrome.tabs.onUpdated.removeListener(listener);
-      // ChatGPT hydrates after "complete"; give it a moment.
-      setTimeout(resolve, 1500);
+      resolve();
     }
     function listener(id, info) {
-      if (id === tabId && info.status === 'complete') finish();
+      if (id === tabId && (info.status === 'loading' || info.url)) finish();
     }
     chrome.tabs.onUpdated.addListener(listener);
-    if (!expectNavigation) {
-      chrome.tabs.get(tabId).then((t) => t.status === 'complete' && finish()).catch(finish);
-    }
   });
 }

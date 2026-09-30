@@ -138,6 +138,26 @@ async function addPrompts(panel, text) {
   await panel.click('#addPrompts');
 }
 
+const pageLoads = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('pageLoads') || '0'));
+
+/** Seconds the runner logged for "chat ready" on the given prompt number. */
+async function chatReadySecs(panel, n) {
+  const log = await panel.locator('#log').textContent();
+  const m = new RegExp(`Prompt #${n}: chat ready in ([\\d.]+)s`).exec(log);
+  assert.ok(m, `no timing logged for prompt #${n}`);
+  return Number(m[1]);
+}
+
+/** Start the queue and check the first prompt reuses the page (no reload) and gets going quickly. */
+async function startAndCheckFastFirstPrompt(panel, chat, label) {
+  const loadsBefore = await pageLoads(chat);
+  await panel.click('#startBtn');
+  await panel.waitForFunction(() => document.querySelectorAll('.qi.completed, .qi.refused, .qi.failed').length >= 1, null, { timeout: 60000 });
+  assert.equal(await pageLoads(chat), loadsBefore, `${label}: first prompt must not reload ChatGPT`);
+  const secs = await chatReadySecs(panel, 1);
+  assert.ok(secs < 5, `${label}: chat ready took ${secs}s`);
+}
+
 const sentPrompts = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('sent') || '[]'));
 const conversations = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('conversations') || '[]'));
 const queueState = (panel) => panel.evaluate(async () => (await chrome.storage.local.get('cga_queue')).cga_queue);
@@ -162,7 +182,7 @@ async function testExtension() {
   // --- 1. Text queue: retry + failure + downloads ---------------------------------------------
   await addPrompts(panel, 'first prompt\nsecond prompt\nthis one will fail');
   assert.equal(await panel.locator('.qi').count(), 3);
-  await panel.click('#startBtn');
+  await startAndCheckFastFirstPrompt(panel, chat, 'blank tab');
   await idle(panel, { completed: 2, failed: 1 });
   await debugLog();
   assert.match(await panel.locator('.qi.failed .qi-retries').textContent(), /1\/1/);
@@ -173,13 +193,13 @@ async function testExtension() {
   assert.match(log1, /Saved ChatGPT-Automation\/e2e\/001-first-prompt\.md/);
   assert.match(log1, /Saved ChatGPT-Automation\/e2e\/002-second-prompt\.md/);
   assert.equal((await conversations(chat)).length, 1, 'text run stayed in one chat');
-  console.log('ok - text queue with retry + failure, downloads, one chat');
+  console.log('ok - text queue with retry + failure, downloads, one chat, fast first prompt (no reload)');
 
   // --- 2. Images in one chat, refused prompt retried once then skipped -----------------------
   await clearQueue(panel); // also forgets the session chat
   await panel.click('[data-mode="textToImage"]');
   await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square');
-  await panel.click('#startBtn');
+  await startAndCheckFastFirstPrompt(panel, chat, 'tab inside a conversation');
   await idle(panel, { completed: 2, refused: 1 });
   await debugLog();
   let q = await queueState(panel);
@@ -191,7 +211,7 @@ async function testExtension() {
   assert.equal((await conversations(chat)).length, 2, 'image run used exactly one new chat');
   assert.match(await panel.locator('#log').textContent(), /refused by ChatGPT — skipped/);
   assert.equal(await panel.locator('#sessionLink').isVisible(), true);
-  console.log('ok - image queue in one chat, refused prompt retried then skipped');
+  console.log('ok - image queue in one chat via in-page New chat, refused prompt retried then skipped');
 
   // --- 3. Interruption: ChatGPT tab navigated away mid-reply (first prompt of a new session) --
   await clearQueue(panel);

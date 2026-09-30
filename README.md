@@ -40,6 +40,7 @@ ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a
 - **Smart random delay** between prompts (configurable min/max seconds) to avoid rate limits
 - **Max retries** for prompts that fail (errors, rate-limit banners, timeouts, no image generated)
 - Timeout per prompt
+- Fast start: the first prompt reuses the open ChatGPT tab (or switches with ChatGPT's own "New chat", no page reload), and the activity log shows how long each prompt took to get the chat ready and to get a reply
 - One session chat for the whole queue (default), or turn it off to use a new chat for every prompt / a new chat when the run starts
 
 ### 📂 Auto download and file organization
