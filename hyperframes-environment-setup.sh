@@ -2,22 +2,23 @@
 # HyperFrames for every repo: paste this into the cloud environment's Setup script.
 # Installs FFmpeg, HyperFrames' Chrome headless shell, the HyperFrames skills (user-level,
 # so every repo sees them), an `hf-new` project helper, and global notes for Claude.
-set -euo pipefail
+# Every step is allowed to fail: a setup script that exits non-zero stops sessions from starting.
+set -uo pipefail
 
 # 1. FFmpeg / FFprobe
 if ! command -v ffmpeg >/dev/null 2>&1; then
   apt-get update -qq >/dev/null 2>&1 || true
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg >/dev/null
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg >/dev/null || true
 fi
 
 # 2. HyperFrames CLI + Chrome headless shell for rendering
-npx --yes hyperframes@latest browser ensure >/dev/null
+npx --yes hyperframes@latest browser ensure >/dev/null 2>&1 || true
 
 # 3. Skills into ~/.claude/skills: core set + the two main animation workflows
 #    (other workflows install on demand when /hyperframes routes to them).
 #    A lock file left without the skill folders makes `update` skip the install.
 [ -f ~/.claude/skills/hyperframes/SKILL.md ] || rm -f ~/.agents/.skill-lock.json
-(cd /tmp && npx --yes hyperframes@latest skills update motion-graphics general-video >/dev/null 2>&1)
+(cd /tmp && npx --yes hyperframes@latest skills update motion-graphics general-video >/dev/null 2>&1) || true
 
 # 4. `hf-new <name> [init flags]`: new project with GSAP served locally (CDNs are blocked)
 cat > /usr/local/bin/hf-new <<'EOF'
@@ -64,3 +65,5 @@ with the `/hyperframes` skill.
 <!-- END hyperframes -->
 EOF
 fi
+
+exit 0
