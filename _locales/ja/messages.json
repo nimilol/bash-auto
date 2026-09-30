@@ -180,7 +180,7 @@
     "message": "画像 {0} 枚"
   },
   "countsLine": {
-    "message": "完了 {0}/{1} · 実行中 {2} · 待機 {3} · 失敗 {4} · {5}%"
+    "message": "完了 {0}/{1} · 実行中 {2} · 待機 {3} · 失敗 {4} · 拒否 {5} · {6}%"
   },
   "runnerIdle": {
     "message": "待機"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "プロンプトが見つかりません。"
+  },
+  "singleChat": {
+    "message": "すべてを 1 つのチャットにまとめる"
+  },
+  "singleChatHint": {
+    "message": "キューのすべてのプロンプトを 1 つの ChatGPT 会話で実行します。中断された場合は、そのチャットに戻り、止まったところから続行します。"
+  },
+  "refusalRetries": {
+    "message": "拒否時のリトライ回数"
+  },
+  "sessionChat": {
+    "message": "セッションチャット："
+  },
+  "sessionNone": {
+    "message": "最初のプロンプトで開始"
+  },
+  "newSessionChat": {
+    "message": "新しいセッションチャット"
+  },
+  "status_refused": {
+    "message": "拒否"
+  },
+  "logRefused": {
+    "message": "プロンプト #{0} は ChatGPT に拒否されました — 再試行中（{1}/{2}）。"
+  },
+  "logRefusedSkip": {
+    "message": "プロンプト #{0} は ChatGPT に拒否されました — スキップして次のプロンプトへ進みます。"
+  },
+  "logResumed": {
+    "message": "プロンプト #{0} は中断前に送信済みでした — 再送せずに回答を取得しました。"
+  },
+  "logSessionLost": {
+    "message": "セッションチャットを開けませんでした — 新しいチャットで続行します。"
+  },
+  "logReturningToChat": {
+    "message": "セッションチャットに戻っています…"
+  },
+  "logNewSession": {
+    "message": "次の実行では新しいセッションチャットを開始します。"
   }
 }

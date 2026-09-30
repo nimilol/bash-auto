@@ -11,7 +11,15 @@
 </style>
 </head>
 <body>
-  <!-- Minimal imitation of chatgpt.com's DOM, used by tests/e2e.mjs. -->
+  <!--
+    Minimal imitation of chatgpt.com's DOM, used by tests/e2e.mjs.
+    - The first message moves the URL to /c/<id>; conversations persist in localStorage, so
+      reloading or navigating back to /c/<id> shows the same thread (like the real site).
+    - Replies are stored as soon as a prompt is sent (the server keeps generating even if the
+      page goes away), then streamed on screen.
+    - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
+      "slow" -> long streaming.
+  -->
   <main id="thread"></main>
   <form onsubmit="return false">
     <input type="file" accept="image/*" multiple hidden id="upload" />
@@ -24,8 +32,14 @@
   const send = document.getElementById('send');
   const box = document.getElementById('prompt-textarea');
   const upload = document.getElementById('upload');
+  const hasStorage = (() => { try { localStorage.setItem('_t', '1'); return true; } catch { return false; } })();
+  const db = {
+    get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+    set: (k, v) => { if (hasStorage) localStorage.setItem(k, JSON.stringify(v)); },
+  };
   let attached = [];
   let turnNo = 0;
+  let convId = (location.pathname.match(/\/c\/([\w-]+)/) || [])[1] || null;
 
   upload.addEventListener('change', () => {
     attached = [...upload.files].map((f) => f.name);
@@ -40,6 +54,59 @@
     return new Promise((r) => c.toBlob((b) => r(URL.createObjectURL(b)), 'image/png'));
   }
 
+  function addUser(text) {
+    const user = document.createElement('article');
+    user.dataset.testid = `conversation-turn-${++turnNo}`;
+    user.innerHTML = '<div data-message-author-role="user"></div>';
+    user.firstChild.textContent = text;
+    thread.append(user);
+  }
+
+  function addAssistant() {
+    const bot = document.createElement('article');
+    bot.dataset.testid = `conversation-turn-${++turnNo}`;
+    bot.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"></div></div>';
+    thread.append(bot);
+    return bot;
+  }
+
+  async function addImage(bot) {
+    const img = document.createElement('img');
+    img.alt = 'Generated image';
+    img.width = 512; img.height = 512;
+    img.src = await imageBlobUrl();
+    bot.append(img);
+  }
+
+  function replyFor(prompt, files) {
+    if (/fail/i.test(prompt)) return { text: 'Something went wrong. Please try again later.', image: false };
+    if (/forbidden/i.test(prompt)) {
+      return { text: 'I can’t create that image because the request violates our content policies.', image: false };
+    }
+    return {
+      text: `Echo: ${prompt}` + (files.length ? ` [files: ${files.join(', ')}]` : ''),
+      image: /image/i.test(prompt),
+    };
+  }
+
+  // Restore a saved conversation (reload / navigating back).
+  (async () => {
+    if (!convId) return;
+    const conv = db.get(`conv:${convId}`, null);
+    if (!conv) {
+      thread.textContent = 'Conversation not found';
+      return;
+    }
+    for (const t of conv.turns) {
+      if (t.role === 'user') addUser(t.text);
+      else {
+        const bot = addAssistant();
+        bot.querySelector('.markdown').textContent = t.text;
+        if (t.image) await addImage(bot);
+      }
+    }
+  })();
+
   send.addEventListener('click', async () => {
     const prompt = box.innerText.trim();
     if (!prompt) return;
@@ -47,37 +114,31 @@
     const files = attached; attached = [];
     document.getElementById('attachments').textContent = '';
 
-    const user = document.createElement('article');
-    user.dataset.testid = `conversation-turn-${++turnNo}`;
-    user.innerHTML = '<div data-message-author-role="user"></div>';
-    user.firstChild.textContent = prompt;
-    thread.append(user);
+    if (!convId) {
+      convId = `mock-${Date.now().toString(36)}`;
+      history.pushState(null, '', `/c/${convId}`);
+      db.set('conversations', [...db.get('conversations', []), convId]);
+    }
+    const reply = replyFor(prompt, files);
+    const conv = db.get(`conv:${convId}`, { turns: [] });
+    conv.turns.push({ role: 'user', text: prompt }, { role: 'assistant', ...reply });
+    db.set(`conv:${convId}`, conv);
+    db.set('sent', [...db.get('sent', []), prompt]);
 
+    addUser(prompt);
     const stop = document.createElement('button');
     stop.dataset.testid = 'stop-button';
     stop.textContent = 'Stop';
     send.replaceWith(stop);
 
-    const bot = document.createElement('article');
-    bot.dataset.testid = `conversation-turn-${++turnNo}`;
-    bot.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"></div></div>';
-    thread.append(bot);
+    const bot = addAssistant();
     const md = bot.querySelector('.markdown');
-
-    const reply = /fail/i.test(prompt)
-      ? 'Something went wrong. Please try again later.'
-      : `Echo: ${prompt}` + (files.length ? ` [files: ${files.join(', ')}]` : '');
-    for (const word of reply.split(' ')) {
+    const wordDelay = /slow/i.test(prompt) ? 1500 : 60;
+    for (const word of reply.text.split(' ')) {
       md.textContent += (md.textContent ? ' ' : '') + word;
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, wordDelay));
     }
-    if (/image/i.test(prompt) && !/fail/i.test(prompt)) {
-      const img = document.createElement('img');
-      img.alt = 'Generated image';
-      img.width = 512; img.height = 512;
-      img.src = await imageBlobUrl();
-      bot.append(img);
-    }
+    if (reply.image) await addImage(bot);
     stop.replaceWith(send);
   });
 </script>

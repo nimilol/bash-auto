@@ -3,7 +3,7 @@ import { LANGUAGES, apply, detectLanguage, setLanguage, t } from './i18n.js';
 import { MODES } from './modes.js';
 import { Runner } from './runner.js';
 
-const KEYS = { settings: 'cga_settings', queue: 'cga_queue', assets: 'cga_assets', lastImage: 'cga_last_image' };
+const KEYS = { settings: 'cga_settings', queue: 'cga_queue', assets: 'cga_assets', lastImage: 'cga_last_image', session: 'cga_session' };
 
 const DEFAULT_SETTINGS = {
   mode: MODES.TEXT,
@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS = {
   minDelay: 5,
   maxDelay: 15,
   maxRetries: 2,
+  refusalRetries: 1,
+  singleChat: true,
   timeoutMinutes: 10,
   newChatPerPrompt: true,
   newChatOnStart: true,
@@ -31,6 +33,7 @@ const $$ = (sel) => [...document.querySelectorAll(sel)];
 let settings = { ...DEFAULT_SETTINGS };
 let queue = [];
 let assets = { sourceImages: [], ingredients: [] };
+let session = null; // { chatUrl, startedAt }: the one conversation this queue runs in
 
 const store = {
   getSettings: async () => ({ ...settings }),
@@ -42,6 +45,12 @@ const store = {
   getAssets: async () => assets,
   getLastImage: async () => (await chrome.storage.local.get(KEYS.lastImage))[KEYS.lastImage] || null,
   setLastImage: (img) => chrome.storage.local.set({ [KEYS.lastImage]: img }),
+  getSession: async () => session,
+  setSession: async (value) => {
+    session = value;
+    if (value) await chrome.storage.local.set({ [KEYS.session]: value });
+    else await chrome.storage.local.remove(KEYS.session);
+  },
 };
 
 const saveSettings = () => chrome.storage.local.set({ [KEYS.settings]: settings });
@@ -58,12 +67,13 @@ const runner = new Runner(store, {
 init();
 
 async function init() {
-  const stored = await chrome.storage.local.get([KEYS.settings, KEYS.queue, KEYS.assets]);
+  const stored = await chrome.storage.local.get([KEYS.settings, KEYS.queue, KEYS.assets, KEYS.session]);
   settings = { ...DEFAULT_SETTINGS, ...(stored[KEYS.settings] || {}) };
   queue = stored[KEYS.queue] || [];
   assets = { sourceImages: [], ingredients: [], ...(stored[KEYS.assets] || {}) };
-  // A previous panel may have closed mid-run.
-  queue.forEach((i) => { if (i.status === STATUS.RUNNING) i.status = STATUS.QUEUED; });
+  session = stored[KEYS.session] || null;
+  // A previous panel may have closed mid-run: that prompt may already be in the chat.
+  queue.forEach((i) => { if (i.status === STATUS.RUNNING) Object.assign(i, { status: STATUS.QUEUED, interrupted: true }); });
 
   if (!settings.language) settings.language = detectLanguage();
   const langSelect = $('#language');
@@ -213,14 +223,16 @@ function bindControls() {
   $('#stopBtn').addEventListener('click', () => runner.stop());
   $('#retryFailedBtn').addEventListener('click', () => {
     queue.forEach((i) => {
-      if (i.status === STATUS.FAILED) Object.assign(i, { status: STATUS.QUEUED, retries: 0, error: '' });
+      if (i.status === STATUS.FAILED || i.status === STATUS.REFUSED) Object.assign(i, { status: STATUS.QUEUED, retries: 0, refusals: 0, interruptions: 0, error: '' });
     });
     saveQueue();
     render();
   });
   $('#resetBtn').addEventListener('click', () => {
     if (runner.busy) return;
-    queue.forEach((i) => Object.assign(i, { status: STATUS.QUEUED, retries: 0, error: '', output: '', imageCount: 0, chatUrl: '' }));
+    queue.forEach((i) => Object.assign(i, {
+      status: STATUS.QUEUED, retries: 0, refusals: 0, interruptions: 0, interrupted: false, error: '', output: '', imageCount: 0, chatUrl: '',
+    }));
     chrome.storage.local.remove(KEYS.lastImage);
     saveQueue();
     render();
@@ -229,7 +241,15 @@ function bindControls() {
     if (runner.busy || !queue.length || !confirm(t('confirmClear'))) return;
     queue = [];
     chrome.storage.local.remove(KEYS.lastImage);
+    store.setSession(null);
     saveQueue();
+    render();
+  });
+
+  $('#newSessionBtn').addEventListener('click', async () => {
+    if (runner.busy) return;
+    await store.setSession(null);
+    log('info', t('logNewSession'));
     render();
   });
 
@@ -246,7 +266,7 @@ function bindControls() {
       render();
     } else if (e.target.closest('.qi-rerun')) {
       if (item.status === STATUS.RUNNING) return;
-      Object.assign(item, { status: STATUS.QUEUED, retries: 0, error: '' });
+      Object.assign(item, { status: STATUS.QUEUED, retries: 0, refusals: 0, interruptions: 0, error: '' });
       saveQueue();
       render();
     }
@@ -263,6 +283,17 @@ function render() {
   $$('.mode-opts').forEach((el) => { el.hidden = !el.dataset.for.split(' ').includes(settings.mode); });
   $('#modeHint').textContent = t(`modeHint_${settings.mode}`);
   renderAssets();
+  for (const key of ['newChatPerPrompt', 'newChatOnStart']) {
+    $(`[data-setting="${key}"]`).disabled = !!settings.singleChat;
+  }
+
+  // Session chat
+  const link = $('#sessionLink');
+  link.hidden = !session?.chatUrl;
+  if (session?.chatUrl) link.href = session.chatUrl;
+  $('#sessionNone').hidden = !!session?.chatUrl;
+  $('#sessionRow').hidden = !settings.singleChat;
+  $('#newSessionBtn').disabled = runner.busy || !session;
 
   // Filename preview
   const sample = queue[0]?.prompt || t('samplePrompt');
@@ -282,13 +313,13 @@ function renderQueue() {
 
   $('#queueEmpty').hidden = queue.length > 0;
   $('#progressBar').style.width = `${counts.percent}%`;
-  $('#counts').textContent = t('countsLine', [counts.completed, counts.total, counts.running, counts.queued, counts.failed, counts.percent]);
+  $('#counts').textContent = t('countsLine', [counts.completed, counts.total, counts.running, counts.queued, counts.failed, counts.refused, counts.percent]);
 
   const busy = runner.busy;
   $('#startBtn').disabled = busy || !counts.queued;
   $('#pauseBtn').disabled = !busy || runner.state === 'pausing';
   $('#stopBtn').disabled = !busy;
-  $('#retryFailedBtn').disabled = !counts.failed;
+  $('#retryFailedBtn').disabled = !counts.failed && !counts.refused;
   $('#resetBtn').disabled = busy || !queue.length;
   $('#clearBtn').disabled = busy || !queue.length;
   $('#startBtn').textContent = t(counts.done && counts.queued ? 'resume' : 'start');
@@ -309,7 +340,11 @@ function renderQueue() {
     const link = node.querySelector('.qi-link');
     if (item.chatUrl) { link.href = item.chatUrl; link.hidden = false; }
     const err = node.querySelector('.qi-error');
-    if (item.error && item.status !== STATUS.COMPLETED) { err.textContent = item.error; err.hidden = false; }
+    if (item.error && item.status !== STATUS.COMPLETED) {
+      err.textContent = item.error;
+      err.hidden = false;
+      err.classList.toggle('muted', item.status === STATUS.REFUSED);
+    }
     node.querySelector('.qi-rerun').disabled = item.status === STATUS.RUNNING || item.status === STATUS.QUEUED;
     node.querySelector('.qi-remove').disabled = item.status === STATUS.RUNNING;
     apply(node);

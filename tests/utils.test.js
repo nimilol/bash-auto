@@ -5,6 +5,7 @@ import {
   randomDelay, slugify, summarize, withAspectRatio,
 } from '../lib/utils.js';
 import { buildRequest, wantsNewChat } from '../sidepanel/modes.js';
+import { conversationId } from '../sidepanel/runner.js';
 
 test('parsePrompts: one per line', () => {
   assert.deepEqual(parsePrompts('first\nsecond\nthird'), ['first', 'second', 'third']);
@@ -71,7 +72,10 @@ test('withAspectRatio', () => {
 
 test('summarize', () => {
   const s = summarize([{ status: 'completed' }, { status: 'failed' }, { status: 'queued' }, { status: 'running' }]);
-  assert.deepEqual(s, { total: 4, queued: 1, running: 1, completed: 1, failed: 1, done: 2, percent: 50 });
+  assert.deepEqual(s, { total: 4, queued: 1, running: 1, completed: 1, failed: 1, refused: 0, done: 2, percent: 50 });
+  const r = summarize([{ status: 'refused' }, { status: 'completed' }]);
+  assert.equal(r.refused, 1);
+  assert.equal(r.percent, 100);
   assert.equal(summarize([]).percent, 0);
 });
 
@@ -109,4 +113,20 @@ test('wantsNewChat', () => {
   assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: true }, false), true);
   assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: false, newChatOnStart: true }, true), true);
   assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: false, newChatOnStart: false }, true), false);
+});
+
+test('wantsNewChat with singleChat', () => {
+  const s = { mode: 'textToImage', singleChat: true, newChatPerPrompt: true, newChatOnStart: true };
+  assert.equal(wantsNewChat(s, true, true), false, 'reuse the session chat');
+  assert.equal(wantsNewChat(s, false, true), false);
+  assert.equal(wantsNewChat(s, true, false), true, 'first prompt with no session starts one');
+  assert.equal(wantsNewChat(s, false, false), false, 'never a new chat per prompt');
+  assert.equal(wantsNewChat({ ...s, mode: 'text', concat: true }, false, true), false);
+});
+
+test('conversationId', () => {
+  assert.equal(conversationId('https://chatgpt.com/c/abc-123'), 'abc-123');
+  assert.equal(conversationId('https://chatgpt.com/g/g-xyz/c/68d1-ef?model=x'), '68d1-ef');
+  assert.equal(conversationId('https://chatgpt.com/'), null);
+  assert.equal(conversationId(undefined), null);
 });

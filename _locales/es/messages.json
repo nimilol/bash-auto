@@ -180,7 +180,7 @@
     "message": "{0} imagen(es)"
   },
   "countsLine": {
-    "message": "{0}/{1} completados · {2} en curso · {3} en cola · {4} fallidos · {5}%"
+    "message": "{0}/{1} completados · {2} en curso · {3} en cola · {4} fallidos · {5} rechazados · {6}%"
   },
   "runnerIdle": {
     "message": "Inactivo"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "No se encontraron prompts."
+  },
+  "singleChat": {
+    "message": "Mantener todo en un solo chat"
+  },
+  "singleChatHint": {
+    "message": "Todos los prompts de la cola van a una sola conversación de ChatGPT. Si la ejecución se interrumpe, la extensión vuelve a ese chat y continúa donde se detuvo."
+  },
+  "refusalRetries": {
+    "message": "Reintentos si es rechazado"
+  },
+  "sessionChat": {
+    "message": "Chat de la sesión:"
+  },
+  "sessionNone": {
+    "message": "empieza con el primer prompt"
+  },
+  "newSessionChat": {
+    "message": "Nuevo chat de sesión"
+  },
+  "status_refused": {
+    "message": "Rechazado"
+  },
+  "logRefused": {
+    "message": "ChatGPT rechazó el prompt n.º {0} — reintentando ({1}/{2})."
+  },
+  "logRefusedSkip": {
+    "message": "ChatGPT rechazó el prompt n.º {0} — omitido, pasando al siguiente prompt."
+  },
+  "logResumed": {
+    "message": "El prompt n.º {0} ya se había enviado antes de la interrupción — se recogió su respuesta sin reenviarlo."
+  },
+  "logSessionLost": {
+    "message": "No se pudo abrir el chat de la sesión — se continúa en un chat nuevo."
+  },
+  "logReturningToChat": {
+    "message": "Volviendo al chat de la sesión…"
+  },
+  "logNewSession": {
+    "message": "La próxima ejecución empezará un nuevo chat de sesión."
   }
 }

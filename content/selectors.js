@@ -28,3 +28,29 @@ globalThis.CGA_ERROR_PATTERNS = [
   'an error occurred',
   'please try again later',
 ];
+
+// Lower-cased fragments that mean ChatGPT declined to make an image (policy refusal).
+// Only checked when an image was expected and none came back.
+globalThis.CGA_REFUSAL_PATTERNS = [
+  'content policy',
+  'content policies',
+  'violates our',
+  'violate our',
+  'against our policies',
+  'usage policies',
+  "i can't create",
+  "i can't generate",
+  "i can't make",
+  "i can't help with",
+  "i can't assist",
+  'i cannot create',
+  'i cannot generate',
+  "i'm unable to create",
+  "i'm unable to generate",
+  "i'm not able to create",
+  "i'm not able to generate",
+  'unable to generate that image',
+  "wasn't able to generate",
+  'not able to create',
+  "can't be generated",
+];

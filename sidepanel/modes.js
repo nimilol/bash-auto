@@ -56,9 +56,11 @@ export function buildRequest(item, settings, assets, ctx = {}) {
 
 /**
  * Whether this item should run in a fresh conversation.
+ * singleChat: every prompt of the run goes into one session chat; only start one when none exists.
  * Concat keeps one conversation for the whole run so each prompt builds on the last.
  */
-export function wantsNewChat(settings, isFirstInRun) {
+export function wantsNewChat(settings, isFirstInRun, hasSessionChat = false) {
+  if (settings.singleChat) return !hasSessionChat && isFirstInRun;
   if (settings.mode === MODES.TEXT && settings.concat) return isFirstInRun;
   return settings.newChatPerPrompt || (isFirstInRun && settings.newChatOnStart);
 }

@@ -12,6 +12,7 @@
   --chip-running: #e0f2fe;
   --chip-completed: #dcfae6;
   --chip-failed: #fee4e2;
+  --chip-refused: #fef0c7;
   --radius: 10px;
   color-scheme: light;
 }
@@ -31,6 +32,7 @@
     --chip-running: #0b3a53;
     --chip-completed: #0f3d2a;
     --chip-failed: #4a1c19;
+    --chip-refused: #4e3a0a;
     color-scheme: dark;
   }
 }
@@ -166,6 +168,14 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 10px 0; }
 .chip.running { background: var(--chip-running); }
 .chip.completed { background: var(--chip-completed); }
 .chip.failed { background: var(--chip-failed); }
+.chip.refused { background: var(--chip-refused); }
+.qi.refused { opacity: .75; }
+.qi-error.muted { color: var(--warn); }
+.muted { color: var(--muted); }
+.session { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; }
+.session[hidden] { display: none; }
+.session a { color: var(--accent); text-decoration: none; font-weight: 600; }
+input:disabled + span { opacity: .5; }
 .qi-link { color: var(--accent); text-decoration: none; }
 .icon-btn { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 2px 4px; font-size: 13px; }
 .icon-btn:hover { color: var(--text); }

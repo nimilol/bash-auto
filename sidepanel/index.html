@@ -89,8 +89,11 @@
         <label class="field"><span data-i18n="minDelay">Min delay (s)</span><input type="number" min="0" step="1" data-setting="minDelay" /></label>
         <label class="field"><span data-i18n="maxDelay">Max delay (s)</span><input type="number" min="0" step="1" data-setting="maxDelay" /></label>
         <label class="field"><span data-i18n="maxRetries">Max retries</span><input type="number" min="0" max="20" step="1" data-setting="maxRetries" /></label>
+        <label class="field"><span data-i18n="refusalRetries">Retries when refused</span><input type="number" min="0" max="10" step="1" data-setting="refusalRetries" /></label>
         <label class="field"><span data-i18n="timeoutMinutes">Timeout per prompt (min)</span><input type="number" min="1" max="60" step="1" data-setting="timeoutMinutes" /></label>
       </div>
+      <label class="check"><input type="checkbox" data-setting="singleChat" /> <span data-i18n="singleChat">Keep everything in one chat</span></label>
+      <p class="hint" data-i18n="singleChatHint"></p>
       <label class="check"><input type="checkbox" data-setting="newChatPerPrompt" /> <span data-i18n="newChatPerPrompt">New chat for every prompt</span></label>
       <label class="check"><input type="checkbox" data-setting="newChatOnStart" /> <span data-i18n="newChatOnStart">Start a new chat when the run starts</span></label>
       <hr />
@@ -115,6 +118,13 @@
         <button class="btn ghost" id="retryFailedBtn" data-i18n="retryFailed">Retry failed</button>
         <button class="btn ghost" id="resetBtn" data-i18n="resetAll">Reset all</button>
         <button class="btn ghost" id="clearBtn" data-i18n="clearQueue">Clear queue</button>
+      </div>
+      <div class="session" id="sessionRow">
+        <span data-i18n="sessionChat">Session chat:</span>
+        <a id="sessionLink" target="_blank" rel="noopener" data-i18n="openChat" hidden>Open chat</a>
+        <span id="sessionNone" class="muted" data-i18n="sessionNone">starts with the first prompt</span>
+        <span class="spacer"></span>
+        <button class="btn small ghost" id="newSessionBtn" data-i18n="newSessionChat">New session chat</button>
       </div>
       <p class="hint" data-i18n="keepPanelOpen"></p>
       <ol class="queue" id="queueList"></ol>

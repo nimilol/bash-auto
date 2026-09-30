@@ -180,7 +180,7 @@
     "message": "{0} ảnh"
   },
   "countsLine": {
-    "message": "{0}/{1} hoàn thành · {2} đang chạy · {3} đang chờ · {4} thất bại · {5}%"
+    "message": "{0}/{1} hoàn thành · {2} đang chạy · {3} đang chờ · {4} thất bại · {5} bị từ chối · {6}%"
   },
   "runnerIdle": {
     "message": "Rảnh"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "Không tìm thấy prompt nào."
+  },
+  "singleChat": {
+    "message": "Giữ mọi thứ trong một cuộc trò chuyện"
+  },
+  "singleChatHint": {
+    "message": "Tất cả prompt trong hàng đợi đi vào một cuộc trò chuyện ChatGPT. Nếu bị gián đoạn, tiện ích sẽ quay lại cuộc trò chuyện đó và tiếp tục từ chỗ đã dừng."
+  },
+  "refusalRetries": {
+    "message": "Số lần thử lại khi bị từ chối"
+  },
+  "sessionChat": {
+    "message": "Cuộc trò chuyện phiên:"
+  },
+  "sessionNone": {
+    "message": "bắt đầu từ prompt đầu tiên"
+  },
+  "newSessionChat": {
+    "message": "Cuộc trò chuyện phiên mới"
+  },
+  "status_refused": {
+    "message": "Bị từ chối"
+  },
+  "logRefused": {
+    "message": "Prompt #{0} bị ChatGPT từ chối — đang thử lại ({1}/{2})."
+  },
+  "logRefusedSkip": {
+    "message": "Prompt #{0} bị ChatGPT từ chối — bỏ qua, chuyển sang prompt tiếp theo."
+  },
+  "logResumed": {
+    "message": "Prompt #{0} đã được gửi trước khi gián đoạn — đã lấy câu trả lời mà không gửi lại."
+  },
+  "logSessionLost": {
+    "message": "Không mở được cuộc trò chuyện phiên — tiếp tục trong cuộc trò chuyện mới."
+  },
+  "logReturningToChat": {
+    "message": "Đang quay lại cuộc trò chuyện phiên…"
+  },
+  "logNewSession": {
+    "message": "Lần chạy tiếp theo sẽ bắt đầu cuộc trò chuyện phiên mới."
   }
 }

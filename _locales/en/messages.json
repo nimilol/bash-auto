@@ -180,7 +180,7 @@
     "message": "{0} image(s)"
   },
   "countsLine": {
-    "message": "{0}/{1} completed · {2} running · {3} queued · {4} failed · {5}%"
+    "message": "{0}/{1} completed · {2} running · {3} queued · {4} failed · {5} refused · {6}%"
   },
   "runnerIdle": {
     "message": "Idle"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "No prompts found."
+  },
+  "singleChat": {
+    "message": "Keep everything in one chat"
+  },
+  "singleChatHint": {
+    "message": "All prompts of the queue go into one ChatGPT conversation. If the run is interrupted, the extension returns to that chat and continues where it stopped."
+  },
+  "refusalRetries": {
+    "message": "Retries when refused"
+  },
+  "sessionChat": {
+    "message": "Session chat:"
+  },
+  "sessionNone": {
+    "message": "starts with the first prompt"
+  },
+  "newSessionChat": {
+    "message": "New session chat"
+  },
+  "status_refused": {
+    "message": "Refused"
+  },
+  "logRefused": {
+    "message": "Prompt #{0} was refused by ChatGPT — retrying ({1}/{2})."
+  },
+  "logRefusedSkip": {
+    "message": "Prompt #{0} was refused by ChatGPT — skipped, moving to the next prompt."
+  },
+  "logResumed": {
+    "message": "Prompt #{0} was already sent before the interruption — collected its reply without resending."
+  },
+  "logSessionLost": {
+    "message": "The session chat could not be opened — continuing in a new chat."
+  },
+  "logReturningToChat": {
+    "message": "Returning to the session chat…"
+  },
+  "logNewSession": {
+    "message": "The next run will start a new session chat."
   }
 }

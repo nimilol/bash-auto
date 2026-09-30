@@ -11,9 +11,14 @@ ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a
 ### 🤖 Batch processing
 - Queue prompts by typing them (one per line, or blocks separated by a blank line) or importing a `.txt` / `.csv` file (uses the `prompt` column, or the first column if there isn't one)
 - Submits each prompt, waits for generation to finish, then moves on
-- Live queue with per-prompt status (**Queued → Running → Completed / Failed**), a retry counter, a progress bar, and a link back to each conversation
+- Live queue with per-prompt status (**Queued → Running → Completed / Failed / Refused**), a retry counter, a progress bar, and a link back to each conversation
 - Start / Pause (finishes the current prompt first) / Stop / Retry failed / Reset / Clear
 - The queue is saved, so you can close the panel and resume later
+
+### 🗂️ One organized chat, auto-resume, refusal skip
+- **Keep everything in one chat** (on by default): every prompt of the queue goes into a single ChatGPT conversation, the *session chat*, instead of scattering images across many chats. The panel shows a link to it, and **New session chat** starts a fresh one. Clearing the queue also starts a fresh one.
+- **Auto-resume after interruptions**: if the ChatGPT tab is closed, reloaded, or moved to another chat, the network drops, or the side panel is closed mid-run, the extension goes back to the session chat and continues from the prompt where it stopped. If that prompt was already sent, it collects the reply instead of sending it again. Interruptions don't use up the prompt's normal retries.
+- **Refusal handling**: when ChatGPT declines to generate an image (content policy), the prompt is retried (**Retries when refused**, default 1) in the same chat. If it's refused again, it's marked **Refused** and the queue moves straight on to the next prompt. **Retry failed** also re-queues refused prompts.
 
 ### ✍️ Text mode
 - One text reply per prompt, saved as a Markdown file (prompt + response)
@@ -35,7 +40,7 @@ ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a
 - **Smart random delay** between prompts (configurable min/max seconds) to avoid rate limits
 - **Max retries** for prompts that fail (errors, rate-limit banners, timeouts, no image generated)
 - Timeout per prompt
-- New chat for every prompt, or start a new chat only when the run starts
+- One session chat for the whole queue (default), or turn it off to use a new chat for every prompt / a new chat when the run starts
 
 ### 📂 Auto download and file organization
 - Results are saved to `Downloads/ChatGPT-Automation/<project>/`
@@ -85,7 +90,7 @@ tests/                 Unit tests, static checks, Playwright end-to-end test + m
 ```
 
 ### When ChatGPT changes its UI
-ChatGPT's page structure changes from time to time. All selectors live in [`content/selectors.js`](content/selectors.js) (composer, send/stop buttons, message turns, generated images, error banners), and error phrases that trigger a retry are in `CGA_ERROR_PATTERNS` in the same file. Updating that file is usually all it takes.
+ChatGPT's page structure changes from time to time. All selectors live in [`content/selectors.js`](content/selectors.js) (composer, send/stop buttons, message turns, generated images, error banners). Error phrases that trigger a retry are in `CGA_ERROR_PATTERNS`, and the phrases that mark a policy refusal are in `CGA_REFUSAL_PATTERNS`, both in the same file. Updating that file is usually all it takes.
 
 ## Development
 

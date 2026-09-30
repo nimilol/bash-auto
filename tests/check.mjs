@@ -45,7 +45,7 @@ const used = new Set([
   ...[...js.matchAll(/\bt\('([A-Za-z_]+)'/g)].map((m) => m[1]),
   ...[...js.matchAll(/'(log[A-Z][A-Za-z]+)'/g)].map((m) => m[1]),
   ...['text', 'textToImage', 'imageToImage', 'ingredients'].map((m) => `modeHint_${m}`),
-  ...['queued', 'running', 'completed', 'failed'].map((s) => `status_${s}`),
+  ...['queued', 'running', 'completed', 'failed', 'refused'].map((s) => `status_${s}`),
 ]);
 for (const k of used) if (!en[k]) errors.push(`i18n key used but not defined: ${k}`);
 

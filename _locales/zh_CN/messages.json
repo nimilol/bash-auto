@@ -180,7 +180,7 @@
     "message": "{0} 张图片"
   },
   "countsLine": {
-    "message": "已完成 {0}/{1} · 运行中 {2} · 排队 {3} · 失败 {4} · {5}%"
+    "message": "已完成 {0}/{1} · 运行中 {2} · 排队 {3} · 失败 {4} · 被拒绝 {5} · {6}%"
   },
   "runnerIdle": {
     "message": "空闲"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "未找到提示词。"
+  },
+  "singleChat": {
+    "message": "所有内容保留在同一个对话中"
+  },
+  "singleChatHint": {
+    "message": "队列中的所有提示词都进入同一个 ChatGPT 对话。如果运行中断，扩展会回到该对话并从停止处继续。"
+  },
+  "refusalRetries": {
+    "message": "被拒绝时的重试次数"
+  },
+  "sessionChat": {
+    "message": "会话对话："
+  },
+  "sessionNone": {
+    "message": "从第一个提示词开始"
+  },
+  "newSessionChat": {
+    "message": "新建会话对话"
+  },
+  "status_refused": {
+    "message": "被拒绝"
+  },
+  "logRefused": {
+    "message": "提示词 #{0} 被 ChatGPT 拒绝 — 正在重试（{1}/{2}）。"
+  },
+  "logRefusedSkip": {
+    "message": "提示词 #{0} 被 ChatGPT 拒绝 — 已跳过，继续下一个提示词。"
+  },
+  "logResumed": {
+    "message": "提示词 #{0} 在中断前已发送 — 已直接获取回复，未重复发送。"
+  },
+  "logSessionLost": {
+    "message": "无法打开会话对话 — 将在新对话中继续。"
+  },
+  "logReturningToChat": {
+    "message": "正在返回会话对话…"
+  },
+  "logNewSession": {
+    "message": "下次运行将开始新的会话对话。"
   }
 }

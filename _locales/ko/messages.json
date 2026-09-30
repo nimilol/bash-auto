@@ -180,7 +180,7 @@
     "message": "이미지 {0}개"
   },
   "countsLine": {
-    "message": "완료 {0}/{1} · 실행 중 {2} · 대기 {3} · 실패 {4} · {5}%"
+    "message": "완료 {0}/{1} · 실행 중 {2} · 대기 {3} · 실패 {4} · 거부 {5} · {6}%"
   },
   "runnerIdle": {
     "message": "대기"
@@ -241,5 +241,44 @@
   },
   "logNoPrompts": {
     "message": "프롬프트를 찾을 수 없습니다."
+  },
+  "singleChat": {
+    "message": "모든 것을 하나의 채팅에 유지"
+  },
+  "singleChatHint": {
+    "message": "대기열의 모든 프롬프트가 하나의 ChatGPT 대화로 들어갑니다. 실행이 중단되면 해당 채팅으로 돌아가 멈춘 곳부터 계속합니다."
+  },
+  "refusalRetries": {
+    "message": "거부 시 재시도 횟수"
+  },
+  "sessionChat": {
+    "message": "세션 채팅:"
+  },
+  "sessionNone": {
+    "message": "첫 프롬프트에서 시작"
+  },
+  "newSessionChat": {
+    "message": "새 세션 채팅"
+  },
+  "status_refused": {
+    "message": "거부됨"
+  },
+  "logRefused": {
+    "message": "프롬프트 #{0}이(가) ChatGPT에 의해 거부됨 — 재시도 중 ({1}/{2})."
+  },
+  "logRefusedSkip": {
+    "message": "프롬프트 #{0}이(가) ChatGPT에 의해 거부됨 — 건너뛰고 다음 프롬프트로 이동합니다."
+  },
+  "logResumed": {
+    "message": "프롬프트 #{0}은(는) 중단 전에 이미 전송됨 — 다시 보내지 않고 답변을 가져왔습니다."
+  },
+  "logSessionLost": {
+    "message": "세션 채팅을 열 수 없습니다 — 새 채팅에서 계속합니다."
+  },
+  "logReturningToChat": {
+    "message": "세션 채팅으로 돌아가는 중…"
+  },
+  "logNewSession": {
+    "message": "다음 실행은 새 세션 채팅으로 시작합니다."
   }
 }

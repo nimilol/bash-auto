@@ -193,31 +193,74 @@
     }
   }
 
+  function lastUserText() {
+    const users = qa(S().userMessage);
+    const last = users[users.length - 1];
+    return last ? last.innerText : '';
+  }
+
+  // Curly apostrophes etc. so "can’t" matches "can't".
+  const flat = (s) => normalize(s).toLowerCase().replace(/[\u2018\u2019\u02bc]/g, "'");
+
+  function refusalIn(turn) {
+    const text = flat(assistantText(turn));
+    if (!text) return null;
+    return globalThis.CGA_REFUSAL_PATTERNS.find((p) => text.includes(p)) || null;
+  }
+
+  // Tell the side panel which conversation we're in as soon as ChatGPT assigns an id,
+  // so an interruption mid-reply can still find its way back to this chat.
+  let reportedUrl = '';
+  function reportConversation() {
+    if (!/\/c\/[\w-]+/.test(location.pathname) || location.href === reportedUrl) return;
+    reportedUrl = location.href;
+    if (globalThis.chrome?.runtime?.sendMessage) {
+      chrome.runtime.sendMessage({ type: 'CGA_CHAT_URL', url: location.href }).catch(() => {});
+    }
+  }
+
+  function isConversationMissing() {
+    const text = flat(document.body.innerText).slice(0, 4000);
+    return ['conversation not found', 'unable to load conversation', "couldn't load conversation"].some((p) => text.includes(p));
+  }
+
   /**
    * Run one prompt: attach files, type, send, wait for completion, and extract results.
-   * opts: { prompt, files:[{name,dataUrl}], expectImages, timeoutMs, stableMs, imageWaitMs }
+   * opts: { prompt, files:[{name,dataUrl}], expectImages, resumeIfSent, timeoutMs, stableMs, imageWaitMs }
+   * resumeIfSent: if this exact prompt is already the last message in the chat (the run was
+   *   interrupted after sending), collect its reply instead of sending it a second time.
+   * Returns { text, images, url, resumed } or { refused: true, error, text, url } when ChatGPT
+   * declined to generate the image.
    */
   async function run(opts) {
     const {
       prompt,
       files = [],
       expectImages = false,
+      resumeIfSent = false,
       timeoutMs = 10 * 60 * 1000,
       stableMs = 2500,
       imageWaitMs = 4 * 60 * 1000,
     } = opts || {};
     if (!prompt) throw new Error('Empty prompt');
 
-    await waitFor(() => !isGenerating(), { timeout: 60000, label: 'the previous reply to finish' });
-    const before = turns().length;
-    const prevAssistant = lastAssistantTurn();
+    const alreadySent = resumeIfSent
+      && flat(lastUserText()) === flat(prompt)
+      && (!!lastAssistantTurn() || isGenerating());
 
-    await attachFiles(files);
-    await setPrompt(prompt);
-    await clickSend();
+    let prevAssistant = null;
+    if (!alreadySent) {
+      await waitFor(() => !isGenerating(), { timeout: 60000, label: 'the previous reply to finish' });
+      const before = turns().length;
+      prevAssistant = lastAssistantTurn();
 
-    // Wait for the reply to start (a new turn or the stop button).
-    await waitFor(() => turns().length > before || isGenerating(), { timeout: 60000, label: 'ChatGPT to start replying' });
+      await attachFiles(files);
+      await setPrompt(prompt);
+      await clickSend();
+
+      // Wait for the reply to start (a new turn or the stop button).
+      await waitFor(() => turns().length > before || isGenerating(), { timeout: 60000, label: 'ChatGPT to start replying' });
+    }
 
     const deadline = Date.now() + timeoutMs;
     let lastSig = '';
@@ -225,6 +268,7 @@
     let turn = null;
     while (Date.now() < deadline) {
       await sleep(500);
+      reportConversation();
       turn = lastAssistantTurn();
       if (turn === prevAssistant) turn = null;
       const err = detectError(turn);
@@ -239,8 +283,11 @@
     }
     if (Date.now() >= deadline) throw new Error('Timed out waiting for the reply');
 
+    const refused = () => ({ refused: true, error: `Refused by ChatGPT: "${refusalIn(turn)}"`, text: assistantText(turn), url: location.href });
+
     let images = imagesIn(turn);
     if (expectImages && !images.length) {
+      if (refusalIn(turn)) return refused();
       const imgDeadline = Date.now() + imageWaitMs;
       while (Date.now() < imgDeadline) {
         await sleep(1000);
@@ -251,6 +298,7 @@
           images = imagesIn(lastAssistantTurn() || turn);
           break;
         }
+        if (!isGenerating() && refusalIn(turn)) return refused();
         const err = detectError(turn);
         if (err) throw new Error(`ChatGPT error: ${err}`);
       }
@@ -260,7 +308,7 @@
     const text = assistantText(turn);
     const dataUrls = [];
     for (const img of images) dataUrls.push(await imageToDataUrl(img));
-    return { text, images: dataUrls, url: location.href };
+    return { text, images: dataUrls, url: location.href, resumed: alreadySent };
   }
 
   globalThis.__CGA_DRIVER = { run, setPrompt, attachFiles, isGenerating, lastAssistantTurn, assistantText, imagesIn };
@@ -269,7 +317,7 @@
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('CGA_')) return false;
       if (msg.type === 'CGA_PING') {
-        sendResponse({ ok: true, ready: !!composer() });
+        sendResponse({ ok: true, ready: !!composer(), url: location.href, missing: isConversationMissing() });
         return false;
       }
       if (msg.type === 'CGA_STOP') {
@@ -280,7 +328,7 @@
       }
       if (msg.type === 'CGA_RUN') {
         run(msg.payload)
-          .then((result) => sendResponse({ ok: true, ...result }))
+          .then((result) => sendResponse({ ok: !result.refused, ...result }))
           .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
         return true; // async response
       }
