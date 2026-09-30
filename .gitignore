@@ -1,3 +1,6 @@
 node_modules/
 *.zip
 .DS_Store
+
+# HyperFrames render output
+videos/*/renders/
