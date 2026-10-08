@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "Prompt #{0}: chat ready in {1}s, reply in {2}s."
+  },
+  "keepTabActive": {
+    "message": "Keep the ChatGPT tab in front while running"
+  },
+  "keepTabActiveHint": {
+    "message": "Browsers slow down background tabs, which can stall ChatGPT's replies. The tab is brought to the front of its window before each prompt (your focus stays where it is)."
+  },
+  "copyDiagnostics": {
+    "message": "Copy diagnostics"
+  },
+  "copyDiagnosticsHint": {
+    "message": "Something not working? Open ChatGPT, click Copy diagnostics, and paste the result into your bug report."
+  },
+  "openInWindow": {
+    "message": "Open in a separate window"
+  },
+  "logSent": {
+    "message": "Prompt #{0}: sent, waiting for the reply…"
+  },
+  "logWaitingForImage": {
+    "message": "Prompt #{0}: waiting for the image…"
+  },
+  "logTabHidden": {
+    "message": "The ChatGPT tab is hidden (minimized window?). Keep its window visible, or replies may stall."
+  },
+  "logTabActivated": {
+    "message": "Brought the ChatGPT tab to the front."
+  },
+  "logAlreadyRunning": {
+    "message": "Another panel is already running the queue. Use that one, or stop it first."
+  },
+  "logNeedHostAccess": {
+    "message": "The extension needs access to chatgpt.com to run. Click Start again and allow it."
+  },
+  "logDiagnostics": {
+    "message": "Page check: {0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "Diagnostics copied to the clipboard. Paste them into your bug report."
   }
 }

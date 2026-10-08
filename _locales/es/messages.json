@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "Prompt n.º {0}: chat listo en {1} s, respuesta en {2} s."
+  },
+  "keepTabActive": {
+    "message": "Mantener la pestaña de ChatGPT al frente durante la ejecución"
+  },
+  "keepTabActiveHint": {
+    "message": "Los navegadores ralentizan las pestañas en segundo plano, lo que puede detener las respuestas de ChatGPT. La pestaña se trae al frente de su ventana antes de cada prompt (el foco no cambia)."
+  },
+  "copyDiagnostics": {
+    "message": "Copiar diagnóstico"
+  },
+  "copyDiagnosticsHint": {
+    "message": "¿Algo no funciona? Abre ChatGPT, pulsa Copiar diagnóstico y pega el resultado en tu informe."
+  },
+  "openInWindow": {
+    "message": "Abrir en una ventana aparte"
+  },
+  "logSent": {
+    "message": "Prompt #{0}: enviado, esperando la respuesta…"
+  },
+  "logWaitingForImage": {
+    "message": "Prompt #{0}: esperando la imagen…"
+  },
+  "logTabHidden": {
+    "message": "La pestaña de ChatGPT está oculta (¿ventana minimizada?). Mantén su ventana visible o las respuestas pueden detenerse."
+  },
+  "logTabActivated": {
+    "message": "Se trajo la pestaña de ChatGPT al frente."
+  },
+  "logAlreadyRunning": {
+    "message": "Otro panel ya está ejecutando la cola. Usa ese o detenlo primero."
+  },
+  "logNeedHostAccess": {
+    "message": "La extensión necesita acceso a chatgpt.com para funcionar. Pulsa Iniciar de nuevo y permítelo."
+  },
+  "logDiagnostics": {
+    "message": "Revisión de la página: {0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "Diagnóstico copiado al portapapeles. Pégalo en tu informe."
   }
 }

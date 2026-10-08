@@ -1,19 +1,58 @@
-// Every chatgpt.com DOM selector used by the driver lives here.
+// Everything the driver knows about chatgpt.com's page lives here: DOM selectors, button labels
+// in many languages, and the phrases that mean an error or a refusal.
 // When ChatGPT ships a UI change, this is usually the only file that needs patching.
+//
+// The driver never depends on a single selector: every list is tried in order, buttons are
+// recognized by test id, then by label (any language below), then by icon or type, and replies
+// are found by position after the sent prompt, so role markers are optional.
 globalThis.CGA_SELECTORS = {
   newChatButton: ['[data-testid="create-new-chat-button"]', 'a[href="/"][data-discover]', 'button[aria-label*="New chat"]', 'a[aria-label*="New chat"]', 'nav a[href="/"]'],
-  composer: ['#prompt-textarea', 'div[contenteditable="true"].ProseMirror', 'textarea[name="prompt-textarea"]', 'form textarea'],
-  sendButton: ['[data-testid="send-button"]', 'button[aria-label="Send prompt"]', 'button[aria-label*="Send"]', '#composer-submit-button'],
-  stopButton: ['[data-testid="stop-button"]', 'button[aria-label="Stop streaming"]', 'button[aria-label*="Stop"]'],
+  // Sept 2026: the composer is a bare contenteditable role="textbox" (no #prompt-textarea).
+  composer: ['#prompt-textarea', 'div[contenteditable="true"].ProseMirror', 'div[contenteditable="true"][role="textbox"]', 'form [contenteditable="true"]', 'textarea[name="prompt-textarea"]', 'form textarea'],
+  // Known send controls. Since Sept 2026 the send button may have no test id at all; the driver
+  // then looks for a button[type=submit] or a send label in the composer's form.
+  sendButton: ['[data-testid="send-button"]', '[data-testid="fruitjuice-send-button"]', 'button[data-testid*="send"]', 'button[aria-label="Send prompt"]', 'form button[type="submit"]'],
+  // Send, Stop and Voice can share this one slot; its state is read, never assumed.
+  submitSlot: ['#composer-submit-button', '[data-testid="composer-submit-button"]'],
+  // Known stop controls anywhere on the page. Translated labels and the square icon are checked
+  // on the composer's own buttons (see CGA_LABELS.stop and stopIconPaths).
+  stopButton: ['[data-testid="stop-button"]', 'button[aria-label="Stop streaming"]', 'button[aria-label="Stop generating"]'],
+  // Stop is drawn as a rounded square: one path starting like this (or a lone <rect>).
+  stopIconPaths: ['M4.5 5.75'],
+  streaming: ['.result-streaming', '[data-is-streaming="true"]', '[data-message-streaming="true"]'],
   fileInput: ['input[type="file"][accept*="image"]', 'input[type="file"]'],
-  turn: ['article[data-testid^="conversation-turn"]', '[data-testid^="conversation-turn"]'],
+  // Conversation turns. The first selector that matches anything wins.
+  turn: ['article[data-testid^="conversation-turn"]', '[data-testid^="conversation-turn"]', 'article[data-turn]', '[data-turn]', 'main article'],
   userMessage: '[data-message-author-role="user"]',
   assistantMessage: '[data-message-author-role="assistant"]',
-  markdown: ['.markdown', '[class*="markdown"]'],
+  // Reply body. Sept 2026 replies use a CSS-module class: MarkdownRoot-<hash>.
+  markdown: ['.markdown', '[class*="MarkdownRoot"]', '[class*="markdown" i]'],
+  // Shown under a reply only once it is finished.
+  actionBar: ['[data-testid="copy-turn-action-button"]', '[data-testid*="turn-action"]', '[data-testid="good-response-turn-action-button"]'],
   // Images produced by ChatGPT (DALL·E / native image generation).
   generatedImage: ['img[src*="oaiusercontent"]', 'img[src*="backend-api/estuary"]', 'img[src*="/backend-api/"]', 'img[src^="blob:"]', 'img[alt*="enerated"]'],
   uploadInProgress: ['[role="progressbar"]', 'circle[stroke-dasharray]'],
   errorBanner: ['[data-testid="error"]', '.text-token-text-error', 'div[class*="text-red"]', '[role="alert"]'],
+};
+
+// Lower-cased button labels in the languages ChatGPT ships. A label matches when it contains one
+// of these. Add a word here when a user reports a language that isn't recognized.
+globalThis.CGA_LABELS = {
+  stop: [
+    'stop', 'detener', 'dừng', '停止', '中止', '중지', '멈추', 'durdur', 'arrêter', 'arreter', 'anhalten',
+    'interrompi', 'parar', 'interromper', 'остановить', 'зупинити', 'zatrzymaj', 'hentikan', 'berhenti',
+    'หยุด', 'إيقاف', 'עצור', 'रोकें', 'zastavit', 'leállít', 'opreș', 'σταμάτ', 'lopeta', 'avbryt',
+  ],
+  send: [
+    'send', 'enviar', 'gửi', '发送', '傳送', '送出', '送信', '보내기', '전송', 'gönder', 'envoyer', 'senden',
+    'invia', 'отправить', 'надіслати', 'wyślij', 'kirim', 'ส่ง', 'إرسال', 'שלח', 'भेजें', 'odeslat',
+    'verzenden', 'verstuur', 'skicka', 'lähetä', 'küld', 'trimite', 'αποστολή',
+  ],
+  copy: [
+    'copy', 'copiar', 'sao chép', '复制', '複製', 'コピー', '복사', 'kopyala', 'copier', 'kopieren', 'copia',
+    'копировать', 'копіювати', 'kopiuj', 'salin', 'คัดลอก', 'نسخ', 'העתק', 'कॉपी', 'kopírovat', 'kopiëren',
+    'kopiera', 'kopioi', 'másol', 'copiază', 'αντιγραφή',
+  ],
 };
 
 // Lower-cased fragments that mean the run failed and should be retried.

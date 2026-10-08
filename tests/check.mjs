@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SHIPPED, firefoxManifest } from '../scripts/build.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
@@ -17,6 +18,16 @@ const referenced = [
   ...manifest.content_scripts.flatMap((c) => c.js),
 ];
 for (const f of referenced) if (!existsSync(join(root, f))) errors.push(`manifest references missing file ${f}`);
+for (const f of referenced) if (!SHIPPED.some((s) => f === s || f.startsWith(`${s}/`))) errors.push(`build would not ship ${f}`);
+
+// Firefox build: no Chromium-only keys, sidebar + event page instead, and a stable add-on id.
+const ff = firefoxManifest(manifest);
+if (ff.side_panel || ff.permissions.includes('sidePanel')) errors.push('firefox manifest still has side panel keys');
+if (ff.background.service_worker || !ff.background.scripts?.length) errors.push('firefox manifest needs background.scripts');
+if (!ff.browser_specific_settings?.gecko?.id) errors.push('firefox manifest needs a gecko id');
+for (const f of [ff.sidebar_action?.default_panel, ...ff.background.scripts]) {
+  if (!f || !existsSync(join(root, f))) errors.push(`firefox manifest references missing file ${f}`);
+}
 
 const locales = readdirSync(join(root, '_locales'));
 const en = JSON.parse(read('_locales/en/messages.json'));
@@ -39,11 +50,12 @@ for (const k of ['extName', 'extDescription']) if (!en[k]) errors.push(`manifest
 if (en.extDescription.message.length > 132) errors.push('extDescription longer than 132 chars');
 
 const html = read('sidepanel/index.html');
-const js = ['app.js', 'runner.js'].map((f) => read(`sidepanel/${f}`)).join('\n');
+const js = [...['app.js', 'runner.js'].map((f) => read(`sidepanel/${f}`)), read('background.js')].join('\n');
 const used = new Set([
   ...[...html.matchAll(/data-i18n(?:-placeholder|-title)?="([^"]+)"/g)].map((m) => m[1]),
   ...[...js.matchAll(/\bt\('([A-Za-z_]+)'/g)].map((m) => m[1]),
   ...[...js.matchAll(/'(log[A-Z][A-Za-z]+)'/g)].map((m) => m[1]),
+  ...[...js.matchAll(/getMessage\('([A-Za-z_]+)'/g)].map((m) => m[1]),
   ...['text', 'textToImage', 'imageToImage', 'ingredients'].map((m) => `modeHint_${m}`),
   ...['queued', 'running', 'completed', 'failed', 'refused'].map((s) => `status_${s}`),
 ]);

@@ -1,3 +1,4 @@
+import { api, browserName } from '../lib/browser.js';
 import { STATUS, buildFilename, parseCsvPrompts, parsePrompts, summarize } from '../lib/utils.js';
 import { LANGUAGES, apply, detectLanguage, setLanguage, t } from './i18n.js';
 import { MODES } from './modes.js';
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS = {
   maxRetries: 2,
   refusalRetries: 1,
   singleChat: true,
+  keepTabActive: true,
   timeoutMinutes: 10,
   newChatPerPrompt: true,
   newChatOnStart: true,
@@ -34,27 +36,30 @@ let settings = { ...DEFAULT_SETTINGS };
 let queue = [];
 let assets = { sourceImages: [], ingredients: [] };
 let session = null; // { chatUrl, startedAt }: the one conversation this queue runs in
+// Firefox treats host permissions as optional: the user may have to grant chatgpt.com access.
+const HOSTS = ['https://chatgpt.com/*', 'https://chat.openai.com/*'];
+let hostAccess = true;
 
 const store = {
   getSettings: async () => ({ ...settings }),
   getQueue: async () => queue,
   saveQueue: async (q) => {
     queue = q;
-    await chrome.storage.local.set({ [KEYS.queue]: queue });
+    await api.storage.local.set({ [KEYS.queue]: queue });
   },
   getAssets: async () => assets,
-  getLastImage: async () => (await chrome.storage.local.get(KEYS.lastImage))[KEYS.lastImage] || null,
-  setLastImage: (img) => chrome.storage.local.set({ [KEYS.lastImage]: img }),
+  getLastImage: async () => (await api.storage.local.get(KEYS.lastImage))[KEYS.lastImage] || null,
+  setLastImage: (img) => api.storage.local.set({ [KEYS.lastImage]: img }),
   getSession: async () => session,
   setSession: async (value) => {
     session = value;
-    if (value) await chrome.storage.local.set({ [KEYS.session]: value });
-    else await chrome.storage.local.remove(KEYS.session);
+    if (value) await api.storage.local.set({ [KEYS.session]: value });
+    else await api.storage.local.remove(KEYS.session);
   },
 };
 
-const saveSettings = () => chrome.storage.local.set({ [KEYS.settings]: settings });
-const saveAssets = () => chrome.storage.local.set({ [KEYS.assets]: assets });
+const saveSettings = () => api.storage.local.set({ [KEYS.settings]: settings });
+const saveAssets = () => api.storage.local.set({ [KEYS.assets]: assets });
 const saveQueue = () => store.saveQueue(queue);
 
 // ---- Runner ----
@@ -67,17 +72,18 @@ const runner = new Runner(store, {
 init();
 
 async function init() {
-  const stored = await chrome.storage.local.get([KEYS.settings, KEYS.queue, KEYS.assets, KEYS.session]);
+  const stored = await api.storage.local.get([KEYS.settings, KEYS.queue, KEYS.assets, KEYS.session]);
   settings = { ...DEFAULT_SETTINGS, ...(stored[KEYS.settings] || {}) };
   queue = stored[KEYS.queue] || [];
   assets = { sourceImages: [], ingredients: [], ...(stored[KEYS.assets] || {}) };
   session = stored[KEYS.session] || null;
   // A previous panel may have closed mid-run: that prompt may already be in the chat.
   queue.forEach((i) => { if (i.status === STATUS.RUNNING) Object.assign(i, { status: STATUS.QUEUED, interrupted: true }); });
+  hostAccess = await api.permissions.contains({ origins: HOSTS }).catch(() => true);
 
   if (!settings.language) settings.language = detectLanguage();
   const langSelect = $('#language');
-  langSelect.innerHTML = LANGUAGES.map((l) => `<option value="${l.code}">${l.label}</option>`).join('');
+  langSelect.replaceChildren(...LANGUAGES.map((l) => new Option(l.label, l.code)));
   langSelect.value = settings.language;
   langSelect.addEventListener('change', async () => {
     settings.language = langSelect.value;
@@ -218,7 +224,19 @@ function reindex() {
 
 // ---- Controls ----
 function bindControls() {
-  $('#startBtn').addEventListener('click', () => runner.start());
+  $('#startBtn').addEventListener('click', () => {
+    if (hostAccess) {
+      runner.start();
+      return;
+    }
+    // Must be requested straight from the click (no await before it) or the browser refuses.
+    api.permissions.request({ origins: HOSTS }).then((granted) => {
+      hostAccess = granted;
+      if (granted) runner.start();
+      else log('warn', t('logNeedHostAccess'));
+    }, (e) => log('error', String(e?.message || e)));
+  });
+  $('#copyDiagnosticsBtn').addEventListener('click', copyDiagnostics);
   $('#pauseBtn').addEventListener('click', () => runner.pause());
   $('#stopBtn').addEventListener('click', () => runner.stop());
   $('#retryFailedBtn').addEventListener('click', () => {
@@ -233,14 +251,14 @@ function bindControls() {
     queue.forEach((i) => Object.assign(i, {
       status: STATUS.QUEUED, retries: 0, refusals: 0, interruptions: 0, interrupted: false, error: '', output: '', imageCount: 0, chatUrl: '',
     }));
-    chrome.storage.local.remove(KEYS.lastImage);
+    api.storage.local.remove(KEYS.lastImage);
     saveQueue();
     render();
   });
   $('#clearBtn').addEventListener('click', () => {
     if (runner.busy || !queue.length || !confirm(t('confirmClear'))) return;
     queue = [];
-    chrome.storage.local.remove(KEYS.lastImage);
+    api.storage.local.remove(KEYS.lastImage);
     store.setSession(null);
     saveQueue();
     render();
@@ -363,6 +381,37 @@ function renderStatus() {
   }
   pill.textContent = text;
   pill.classList.toggle('active', runner.busy);
+}
+
+// ---- Diagnostics ----
+/** Copy a report of what the extension sees (versions, queue, the ChatGPT page) for bug reports. */
+async function copyDiagnostics() {
+  const page = await runner.diagnostics().catch((e) => ({ error: String(e?.message || e) }));
+  const report = {
+    extension: `bash-auto ${api.runtime.getManifest().version}`,
+    browser: browserName(),
+    userAgent: navigator.userAgent,
+    panelLanguage: settings.language,
+    mode: settings.mode,
+    settings: { singleChat: settings.singleChat, keepTabActive: settings.keepTabActive, timeoutMinutes: settings.timeoutMinutes },
+    runner: runner.state,
+    queue: summarize(queue),
+    recentErrors: queue.filter((i) => i.error).slice(-5).map((i) => `#${i.index + 1}: ${i.error}`),
+    page: page || 'No ChatGPT tab answered. Open chatgpt.com and try again.',
+    log: $$('#log li').slice(0, 40).map((li) => li.textContent),
+  };
+  const text = JSON.stringify(report, null, 2);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.append(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+  log('info', t('logDiagnosticsCopied'));
 }
 
 // ---- Log ----

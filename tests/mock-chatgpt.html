@@ -5,9 +5,9 @@
 <title>Mock ChatGPT</title>
 <style>
   body { font-family: sans-serif; margin: 20px; }
-  #prompt-textarea { border: 1px solid #999; min-height: 40px; padding: 6px; white-space: pre-wrap; }
+  [contenteditable] { border: 1px solid #999; min-height: 40px; padding: 6px; white-space: pre-wrap; }
   article { border-bottom: 1px solid #ddd; padding: 8px 0; }
-  button { margin-top: 6px; }
+  button { margin-top: 6px; min-width: 24px; min-height: 24px; }
 </style>
 </head>
 <body>
@@ -19,31 +19,107 @@
       page goes away), then streamed on screen.
     - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
       "slow" -> long streaming.
+
+    Two page layouts, picked with ?ui=legacy|2026 (remembered in localStorage):
+    - legacy: the markup the extension was first built against (#prompt-textarea, data-testid
+      send/stop buttons, data-message-author-role on every message).
+    - 2026: the redesign reported in Sept 2026. Composer is a bare contenteditable
+      role="textbox"; no test ids anywhere; Send, Stop and Voice share one button slot whose
+      aria-label is localized (?lang=en|tr|xx); Stop is only recognizable by its square icon when
+      the label is unknown; messages carry no role markers (reply body is a MarkdownRoot-<hash>
+      div); the Copy action bar shows up only after a reply is finished; and every reply starts
+      with a few silent seconds of "Thinking".
   -->
   <nav><a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a></nav>
   <main id="thread"></main>
-  <form onsubmit="return false">
+  <form id="composerForm" onsubmit="return false">
     <input type="file" accept="image/*" multiple hidden id="upload" />
     <div id="attachments"></div>
-    <div id="prompt-textarea" contenteditable="true" class="ProseMirror"></div>
-    <button type="button" data-testid="send-button" id="send">Send</button>
   </form>
 <script>
-  const thread = document.getElementById('thread');
-  const send = document.getElementById('send');
-  const box = document.getElementById('prompt-textarea');
-  const upload = document.getElementById('upload');
+  const params = new URLSearchParams(location.search);
   const hasStorage = (() => { try { localStorage.setItem('_t', '1'); return true; } catch { return false; } })();
   const db = {
     get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
     set: (k, v) => { if (hasStorage) localStorage.setItem(k, JSON.stringify(v)); },
   };
+  if (params.get('ui')) db.set('ui', params.get('ui'));
+  if (params.get('lang')) db.set('lang', params.get('lang'));
+  const UI = db.get('ui', 'legacy');
+  const LABELS = {
+    en: { send: 'Send prompt', stop: 'Stop streaming', voice: 'Start voice mode', dictate: 'Dictate button', copy: 'Copy', attach: 'Add photos & files', thinking: 'Thinking' },
+    tr: { send: 'Gönder', stop: 'Durdur', voice: 'Sesli iletişimi başlat', dictate: 'Dikte et', copy: 'Kopyala', attach: 'Dosya ekle', thinking: 'Düşünüyor' },
+    // Labels the extension can't possibly know: only structure and icons are left to go on.
+    xx: { send: 'Qzx-1', stop: 'Qzx-2', voice: 'Qzx-3', dictate: 'Qzx-4', copy: 'Qzx-5', attach: 'Qzx-6', thinking: 'Qzx-7' },
+  }[db.get('lang', 'tr')];
+  const ICONS = {
+    arrow: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M8.99992 16V6.41407L5.70696 9.70704"/></svg>',
+    stop: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M4.5 5.75C4.5 5.05964 5.05964 4.5 5.75 4.5H14.25Z"/></svg>',
+    voice: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M7 4v12"/><path d="M10 2v16"/><path d="M13 6v8"/><path d="M4 8v4"/></svg>',
+  };
+
+  const thread = document.getElementById('thread');
+  const form = document.getElementById('composerForm');
+  const upload = document.getElementById('upload');
   let attached = [];
   let turnNo = 0;
+  let generating = false;
+  let stopRequested = false;
   let convId = (location.pathname.match(/\/c\/([\w-]+)/) || [])[1] || null;
+  const bump = (k) => db.set(k, db.get(k, 0) + 1);
 
   // Count real page loads (a client-side "New chat" must not add one).
-  db.set('pageLoads', db.get('pageLoads', 0) + 1);
+  bump('pageLoads');
+
+  // ---- Composer ------------------------------------------------------------------------
+  const box = document.createElement('div');
+  box.contentEditable = 'true';
+  box.className = 'ProseMirror';
+  let slot; // legacy: the send button (swapped for a stop button while generating); 2026: the shared slot
+  if (UI === '2026') {
+    box.setAttribute('role', 'textbox');
+    box.setAttribute('aria-label', 'ChatGPT');
+    const attach = document.createElement('button');
+    attach.type = 'button';
+    attach.setAttribute('aria-label', LABELS.attach);
+    attach.textContent = '+';
+    const dictate = document.createElement('button');
+    dictate.type = 'button';
+    dictate.dataset.state = 'closed';
+    dictate.setAttribute('aria-label', LABELS.dictate);
+    dictate.innerHTML = ICONS.voice;
+    dictate.addEventListener('click', () => bump('wrongClicks'));
+    slot = document.createElement('button');
+    slot.addEventListener('click', () => {
+      if (slot.dataset.mode === 'send') doSend();
+      else if (slot.dataset.mode === 'stop') stopRequested = true;
+      else bump('wrongClicks'); // voice mode must never be started
+    });
+    box.addEventListener('input', updateSlot);
+    form.append(attach, box, dictate, slot);
+    updateSlot();
+  } else {
+    box.id = 'prompt-textarea';
+    slot = document.createElement('button');
+    slot.type = 'button';
+    slot.dataset.testid = 'send-button';
+    slot.id = 'send';
+    slot.textContent = 'Send';
+    slot.addEventListener('click', doSend);
+    form.append(box, slot);
+  }
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !generating) { e.preventDefault(); doSend(); }
+  });
+
+  function updateSlot() {
+    const mode = generating ? 'stop' : box.innerText.trim() ? 'send' : 'voice';
+    if (slot.dataset.mode === mode) return;
+    slot.dataset.mode = mode;
+    slot.type = mode === 'send' ? 'submit' : 'button';
+    slot.setAttribute('aria-label', LABELS[mode]);
+    slot.innerHTML = ICONS[mode === 'send' ? 'arrow' : mode];
+  }
 
   // Client-side "New chat", like the real site: no page reload.
   document.getElementById('newChat').addEventListener('click', (e) => {
@@ -59,6 +135,7 @@
     document.getElementById('attachments').textContent = attached.join(', ');
   });
 
+  // ---- Thread --------------------------------------------------------------------------
   function imageBlobUrl() {
     const c = document.createElement('canvas');
     c.width = 512; c.height = 512;
@@ -69,18 +146,33 @@
 
   function addUser(text) {
     const user = document.createElement('article');
-    user.dataset.testid = `conversation-turn-${++turnNo}`;
-    user.innerHTML = '<div data-message-author-role="user"></div>';
+    if (UI === '2026') {
+      user.innerHTML = '<div class="user-bubble"></div>';
+    } else {
+      user.dataset.testid = `conversation-turn-${++turnNo}`;
+      user.innerHTML = '<div data-message-author-role="user"></div>';
+    }
     user.firstChild.textContent = text;
     thread.append(user);
   }
 
+  /** Returns { turn, body } where body receives the reply text. */
   function addAssistant() {
     const bot = document.createElement('article');
+    if (UI === '2026') {
+      bot.innerHTML = '<div><div class="MarkdownRoot-a1b2c3"></div></div>';
+      return { turn: bot, body: bot.querySelector('div > div') };
+    }
     bot.dataset.testid = `conversation-turn-${++turnNo}`;
     bot.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"></div></div>';
-    thread.append(bot);
-    return bot;
+    return { turn: bot, body: bot.querySelector('.markdown') };
+  }
+
+  function addActionBar(turn) {
+    if (UI !== '2026') return;
+    const bar = document.createElement('div');
+    bar.innerHTML = `<button type="button" aria-label="${LABELS.copy}"><svg viewBox="0 0 20 20" width="16" height="16"><path d="M1 1h8v8H1z"/></svg></button>`;
+    turn.append(bar);
   }
 
   async function addImage(bot) {
@@ -113,16 +205,18 @@
     for (const t of conv.turns) {
       if (t.role === 'user') addUser(t.text);
       else {
-        const bot = addAssistant();
-        bot.querySelector('.markdown').textContent = t.text;
-        if (t.image) await addImage(bot);
+        const { turn, body } = addAssistant();
+        thread.append(turn);
+        body.textContent = t.text;
+        if (t.image) await addImage(turn);
+        addActionBar(turn);
       }
     }
   })();
 
-  send.addEventListener('click', async () => {
+  async function doSend() {
     const prompt = box.innerText.trim();
-    if (!prompt) return;
+    if (!prompt || generating) return;
     box.innerHTML = '';
     const files = attached; attached = [];
     document.getElementById('attachments').textContent = '';
@@ -139,21 +233,43 @@
     db.set('sent', [...db.get('sent', []), prompt]);
 
     addUser(prompt);
-    const stop = document.createElement('button');
-    stop.dataset.testid = 'stop-button';
-    stop.textContent = 'Stop';
-    send.replaceWith(stop);
+    generating = true;
+    stopRequested = false;
+    let stop = null;
+    if (UI === '2026') updateSlot();
+    else {
+      stop = document.createElement('button');
+      stop.type = 'button';
+      stop.dataset.testid = 'stop-button';
+      stop.textContent = 'Stop';
+      slot.replaceWith(stop);
+    }
 
-    const bot = addAssistant();
-    const md = bot.querySelector('.markdown');
+    const { turn, body } = addAssistant();
+    thread.append(turn);
+    if (UI === '2026') {
+      // A few silent seconds of "Thinking" with no reply text, like reasoning models.
+      const thinking = document.createElement('div');
+      thinking.className = 'thinking';
+      thinking.textContent = LABELS.thinking;
+      turn.prepend(thinking);
+      const ms = Number(db.get('thinkMs', 4000));
+      for (let t = 0; t < ms && !stopRequested; t += 100) await new Promise((r) => setTimeout(r, 100));
+      thinking.remove();
+    }
     const wordDelay = /slow/i.test(prompt) ? 1500 : 60;
     for (const word of reply.text.split(' ')) {
-      md.textContent += (md.textContent ? ' ' : '') + word;
+      if (stopRequested) { bump('stoppedReplies'); break; }
+      body.textContent += (body.textContent ? ' ' : '') + word;
       await new Promise((r) => setTimeout(r, wordDelay));
     }
-    if (reply.image) await addImage(bot);
-    stop.replaceWith(send);
-  });
+    if (reply.image && !stopRequested) await addImage(turn);
+    generating = false;
+    if (UI === '2026') {
+      addActionBar(turn);
+      updateSlot();
+    } else stop.replaceWith(slot);
+  }
 </script>
 </body>
 </html>

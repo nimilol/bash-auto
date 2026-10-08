@@ -1,5 +1,6 @@
 // Runtime-switchable UI translations, read from the extension's _locales/<lang>/messages.json.
-// (chrome.i18n always follows the browser language; this lets users pick one in the panel.)
+// (i18n.getMessage always follows the browser language; this lets users pick one in the panel.)
+import { api } from '../lib/browser.js';
 
 export const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -14,14 +15,14 @@ let fallback = {};
 let messages = {};
 
 async function load(code) {
-  const res = await fetch(chrome.runtime.getURL(`_locales/${code}/messages.json`));
+  const res = await fetch(api.runtime.getURL(`_locales/${code}/messages.json`));
   const json = await res.json();
   return Object.fromEntries(Object.entries(json).map(([k, v]) => [k, v.message]));
 }
 
 /** Best match for the browser UI language, e.g. "zh-CN" -> "zh_CN", "es-419" -> "es". */
 export function detectLanguage() {
-  const ui = (chrome.i18n?.getUILanguage?.() || navigator.language || 'en').replace('-', '_');
+  const ui = (api.i18n?.getUILanguage?.() || navigator.language || 'en').replace('-', '_');
   const exact = LANGUAGES.find((l) => l.code.toLowerCase() === ui.toLowerCase());
   if (exact) return exact.code;
   const base = ui.split('_')[0].toLowerCase();

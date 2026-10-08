@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "提示词 #{0}：对话准备用时 {1} 秒，回复用时 {2} 秒。"
+  },
+  "keepTabActive": {
+    "message": "运行时保持 ChatGPT 标签页在前台"
+  },
+  "keepTabActiveHint": {
+    "message": "浏览器会降低后台标签页的速度，可能导致 ChatGPT 回复卡住。每个提示词发送前会把该标签页切到所在窗口的前台（不会抢走焦点）。"
+  },
+  "copyDiagnostics": {
+    "message": "复制诊断信息"
+  },
+  "copyDiagnosticsHint": {
+    "message": "遇到问题？打开 ChatGPT，点击“复制诊断信息”，然后把结果粘贴到问题反馈中。"
+  },
+  "openInWindow": {
+    "message": "在单独窗口中打开"
+  },
+  "logSent": {
+    "message": "提示词 #{0}：已发送，正在等待回复…"
+  },
+  "logWaitingForImage": {
+    "message": "提示词 #{0}：正在等待图片…"
+  },
+  "logTabHidden": {
+    "message": "ChatGPT 标签页处于隐藏状态（窗口被最小化了？）。请保持其窗口可见，否则回复可能会卡住。"
+  },
+  "logTabActivated": {
+    "message": "已将 ChatGPT 标签页切到前台。"
+  },
+  "logAlreadyRunning": {
+    "message": "另一个面板正在运行队列。请使用那个面板，或先将其停止。"
+  },
+  "logNeedHostAccess": {
+    "message": "扩展需要访问 chatgpt.com 的权限才能运行。请再次点击“开始”并允许。"
+  },
+  "logDiagnostics": {
+    "message": "页面检查：{0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "诊断信息已复制到剪贴板。请粘贴到问题反馈中。"
   }
 }

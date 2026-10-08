@@ -2,7 +2,7 @@
 
 **Auto ChatGPT for your prompts at scale.** Batch generate and auto-download responses and images on [chatgpt.com](https://chatgpt.com).
 
-ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a batch-processing engine. Queue dozens or hundreds of prompts in the Side Panel and it will submit each one, wait for the reply to finish, save the result, and move on to the next prompt. No clicks, no babysitting.
+ChatGPT Automation is a browser extension (Manifest V3, for Chrome, Edge, Brave, Opera, Vivaldi, Arc and Firefox) that turns ChatGPT into a batch-processing engine. Queue dozens or hundreds of prompts in its panel and it will submit each one, wait for the reply to finish, save the result, and move on to the next prompt. No clicks, no babysitting.
 
 <p align="center"><img src="docs/screenshot-panel.png" alt="Side panel" width="340" /></p>
 
@@ -42,6 +42,9 @@ ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a
 - Timeout per prompt
 - Fast start: the first prompt reuses the open ChatGPT tab (or switches with ChatGPT's own "New chat", no page reload), and the activity log shows how long each prompt took to get the chat ready and to get a reply
 - One session chat for the whole queue (default), or turn it off to use a new chat for every prompt / a new chat when the run starts
+- Works with ChatGPT in any language, including the September 2026 page redesign. A prompt is never sent twice.
+- Keeps the ChatGPT tab in front and stops the browser from discarding it while the queue runs, so replies don't stall in a background tab
+- Stage-by-stage activity log, and **Copy diagnostics** for one-click bug reports
 
 ### 📂 Auto download and file organization
 - Results are saved to `Downloads/ChatGPT-Automation/<project>/`
@@ -51,14 +54,32 @@ ChatGPT Automation is a Chrome extension (Manifest V3) that turns ChatGPT into a
 ### 🌐 Languages
 English · Tiếng Việt · 中文 · 한국어 · 日本語 · Español. The panel starts in your browser's language, and you can switch at any time from the top-right menu.
 
-## Install (unpacked)
+## Supported browsers
 
-1. Download or clone this repository.
-2. Open `chrome://extensions` and turn on **Developer mode**.
-3. Click **Load unpacked** and select the repository folder (the one containing `manifest.json`).
-4. Pin the extension and click its icon to open the Side Panel.
+| Browser | Version | Where the panel opens |
+|---|---|---|
+| Google Chrome | 116+ | Side panel |
+| Microsoft Edge | 116+ | Side panel |
+| Brave, Vivaldi | recent | Side panel |
+| Opera, Arc, other Chromium browsers | recent | Side panel when supported, otherwise its own small window |
+| Mozilla Firefox | 128+ | Sidebar |
+| Safari | — | Not supported (Apple requires converting and signing the extension with Xcode) |
 
-Works in Chrome 116+ and other Chromium browsers that support the Side Panel API (Edge, Brave, …).
+In every browser you can also right-click the toolbar button and choose **Open in a separate window**.
+
+## Install
+
+### Chrome, Edge, Brave, Opera, Vivaldi, Arc
+1. Download or clone this repository. Or run `npm run build` and use `dist/chromium/` (or its zip).
+2. Open the extensions page: `chrome://extensions`, `edge://extensions`, `brave://extensions`, `opera://extensions` or `vivaldi:extensions`.
+3. Turn on **Developer mode** and click **Load unpacked**. Select the folder that contains `manifest.json`.
+4. Pin the extension and click its icon to open the panel.
+
+### Firefox
+1. Run `npm run build` (or download the release zip) and use `dist/firefox/`.
+2. For a quick try: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and pick `dist/firefox/manifest.json`. Temporary add-ons are removed when Firefox restarts.
+3. For a permanent install, the zip has to be signed by Mozilla. Upload `dist/bash-auto-firefox-<version>.zip` at [addons.mozilla.org](https://addons.mozilla.org/developers/) (an *unlisted* add-on is enough), then install the signed `.xpi`.
+4. Click the toolbar button to open the sidebar. If Firefox asks for access to chatgpt.com on the first **Start**, allow it.
 
 ## Usage
 
@@ -66,18 +87,18 @@ Works in Chrome 116+ and other Chromium browsers that support the Side Panel API
 2. Open the Side Panel, pick a **mode**, and set its options (aspect ratio, chain, reference images…).
 3. Paste your prompts and click **Add to queue**, or import a file.
 4. Optionally adjust **Settings** (delays, retries, project folder, file naming).
-5. Click **Start**. Keep the panel open while the queue runs, and keep the ChatGPT tab as the active tab in its window. Chrome throttles background tabs, which slows down or stalls generation.
+5. Click **Start**. Keep the panel open while the queue runs. The extension brings the ChatGPT tab to the front of its window before each prompt, because browsers slow down background tabs. Don't minimize that window.
 
 > Tip: Chrome may ask for permission to download multiple files the first time. Allow it for the extension.
 
 ## Project structure
 
 ```
-manifest.json          MV3 manifest (side panel, downloads, storage, scripting)
-background.js          Opens the side panel from the toolbar icon
+manifest.json          MV3 manifest for Chromium browsers (Firefox's is generated by the build)
+background.js          Opens the panel: side panel, Firefox sidebar, or a separate window
 content/
   selectors.js         Every chatgpt.com DOM selector, all in one place
-  driver.js            Types the prompt, attaches files, sends, waits, extracts text/images
+  driver.js            Types the prompt, attaches files, sends, waits, extracts text/images, diagnostics
 sidepanel/
   index.html, panel.css
   app.js               UI, settings, queue editing, persistence
@@ -85,24 +106,45 @@ sidepanel/
   modes.js             Per-mode request building (aspect ratio, chain, ingredients)
   i18n.js              Runtime language switching
 lib/utils.js           Pure helpers (prompt parsing, delays, slugs, file names, matching)
+lib/browser.js         `browser` / `chrome` API namespace, browser detection
+scripts/build.mjs      Packages dist/chromium and dist/firefox (+ zips)
 _locales/<lang>/       Translations (en, vi, zh_CN, ko, ja, es)
 icons/                 Extension icons
 tests/                 Unit tests, static checks, Playwright end-to-end test + mock ChatGPT page
+                       (old and 2026 page layouts)
 ```
 
 ### When ChatGPT changes its UI
-ChatGPT's page structure changes from time to time. All selectors live in [`content/selectors.js`](content/selectors.js) (composer, send/stop buttons, message turns, generated images, error banners). Error phrases that trigger a retry are in `CGA_ERROR_PATTERNS`, and the phrases that mark a policy refusal are in `CGA_REFUSAL_PATTERNS`, both in the same file. Updating that file is usually all it takes.
+ChatGPT's page structure changes from time to time. In September 2026, for example, it dropped the test ids and role markers that automation tools relied on, which made earlier versions of this extension stop after the first prompt. The driver is built to survive changes like that:
+
+- **Buttons** are recognized by test id, then by label in about 30 languages (`CGA_LABELS`), then by icon (Stop is a square) or type (Send is the form's submit button). A Stop button is never clicked as Send.
+- **Replies** are found by position: everything after the turn that shows the prompt. Role markers are used when present but aren't needed.
+- **Completion** means the Stop button is gone, the reply has stopped changing, and the copy/action bar is showing. When none of those can be seen, a long quiet period counts instead. If nothing happens for 3 minutes, the prompt is retried.
+- **Duplicates.** A prompt that already reached the chat is never sent again. After an interruption, the extension collects its reply instead.
+
+Everything page-specific lives in [`content/selectors.js`](content/selectors.js): selectors, button labels (`CGA_LABELS`), error phrases (`CGA_ERROR_PATTERNS`) and refusal phrases (`CGA_REFUSAL_PATTERNS`). Updating that file is usually all it takes. **Copy diagnostics** (in the Activity log) shows exactly which parts of the page the driver can and can't see.
+
+## Troubleshooting
+
+- **The queue stops after the first prompt.** Update to 1.1.0 or later; this was caused by the September 2026 ChatGPT redesign. If it still happens, open the Activity log. It shows each stage ("sent, waiting for the reply…") and a *Page check* line after any failure. Click **Copy diagnostics** and include the result in your bug report.
+- **Replies stall while you work in other tabs or windows.** Leave **Keep the ChatGPT tab in front while running** on (the default) and don't minimize the ChatGPT window. In Chrome you can also add `chatgpt.com` under *Settings → Performance → Always keep these sites active*.
+- **"ChatGPT page is not ready".** Log in to chatgpt.com in that tab, and make sure there's no dialog covering the prompt box.
+- **Firefox: nothing happens on Start.** Allow access to chatgpt.com when asked, or under *about:addons → ChatGPT Automation → Permissions*.
+- **Two panels open.** Only one panel can run the queue at a time. The second one reports that another panel is already running it.
 
 ## Development
 
-No build step: the extension loads straight from source.
+Chromium browsers load the repository folder straight from source. `npm run build` packages it per browser.
 
 ```bash
-npm test            # unit tests (node:test) for helpers and mode logic
-npm run check       # manifest/locale validation, missing translation keys
-npm run test:e2e    # Playwright: driver vs. a mock ChatGPT page, and the real extension
-                    # running a queue against chatgpt.com routed to that mock page
+npm test            # unit tests (node:test) for helpers, mode logic, Firefox manifest
+npm run check       # manifest/locale validation (incl. the Firefox manifest), missing translation keys
+npm run test:e2e    # Playwright: driver vs. a mock ChatGPT page in both its old and 2026 layouts,
+                    # and the real extension running queues against chatgpt.com routed to that mock
+npm run build       # dist/chromium, dist/firefox and their .zip files
 ```
+
+To lint the Firefox package: `npx web-ext lint --source-dir dist/firefox`.
 
 `test:e2e` needs Playwright with Chromium (`npm i -D playwright && npx playwright install chromium`), or set `CHROMIUM_PATH` to an existing Chromium binary.
 

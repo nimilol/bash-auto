@@ -5,7 +5,10 @@ import {
   randomDelay, slugify, summarize, withAspectRatio,
 } from '../lib/utils.js';
 import { buildRequest, wantsNewChat } from '../sidepanel/modes.js';
-import { conversationId } from '../sidepanel/runner.js';
+import { conversationId, wasInterrupted } from '../sidepanel/runner.js';
+import { browserName } from '../lib/browser.js';
+import { firefoxManifest } from '../scripts/build.mjs';
+import { readFileSync } from 'node:fs';
 
 test('parsePrompts: one per line', () => {
   assert.deepEqual(parsePrompts('first\nsecond\nthird'), ['first', 'second', 'third']);
@@ -129,4 +132,34 @@ test('conversationId', () => {
   assert.equal(conversationId('https://chatgpt.com/g/g-xyz/c/68d1-ef?model=x'), '68d1-ef');
   assert.equal(conversationId('https://chatgpt.com/'), null);
   assert.equal(conversationId(undefined), null);
+});
+
+test('wasInterrupted: only a sent-but-uncollected prompt resumes instead of resending', () => {
+  assert.equal(wasInterrupted({ stage: 'reply', error: 'Timed out waiting for the reply' }), true);
+  assert.equal(wasInterrupted({ stage: 'send', error: 'Could not send the prompt' }), false);
+  assert.equal(wasInterrupted({ stage: 'chatgpt', error: 'ChatGPT error: something went wrong' }), false);
+  // Messaging failures around the driver (tab closed or reloaded mid-reply).
+  assert.equal(wasInterrupted({ error: 'Could not establish connection. Receiving end does not exist.' }), true);
+  assert.equal(wasInterrupted({ error: 'No response from the ChatGPT tab (page reloaded?)' }), true);
+  assert.equal(wasInterrupted({ error: 'Add at least one source image' }), false);
+});
+
+test('browserName: tells the major desktop browsers apart', () => {
+  const chrome = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+  assert.equal(browserName(chrome), 'Chrome');
+  assert.equal(browserName(`${chrome} Edg/140.0.0.0`), 'Edge');
+  assert.equal(browserName(`${chrome} OPR/124.0.0.0`), 'Opera');
+  assert.equal(browserName('Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0'), 'Firefox');
+});
+
+test('firefoxManifest: sidebar + event page, no Chromium-only keys', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+  const ff = firefoxManifest(manifest);
+  assert.equal(ff.side_panel, undefined);
+  assert.ok(!ff.permissions.includes('sidePanel'));
+  assert.ok(ff.permissions.includes('menus') && !ff.permissions.includes('contextMenus'));
+  assert.deepEqual(ff.background, { scripts: ['background.js'] });
+  assert.equal(ff.sidebar_action.default_panel, 'sidepanel/index.html');
+  assert.ok(ff.browser_specific_settings.gecko.id);
+  assert.equal(manifest.side_panel.default_path, 'sidepanel/index.html', 'source manifest untouched');
 });

@@ -1,4 +1,5 @@
-// Queue engine. Lives in the side panel page, which stays alive while the panel is open.
+// Queue engine. Lives in the side panel page (or the pop-out window), which stays alive while open.
+import { api } from '../lib/browser.js';
 import { STATUS, buildFilename, extFromMime, mimeFromDataUrl, randomDelay } from '../lib/utils.js';
 import { buildRequest, wantsNewChat, MODES } from './modes.js';
 
@@ -13,7 +14,16 @@ export function conversationId(url) {
 }
 
 // Errors where the prompt may already be in the chat (tab closed/reloaded, reply still running).
-const TRANSPORT_ERROR = /no response|receiving end|message port|message channel|not ready|timed out waiting for the reply|tab was closed|no tab with id/i;
+// The driver labels its own errors with a stage; these are the messaging failures around it.
+const TRANSPORT_ERROR = /no response|receiving end|message port|message channel|not ready|tab was closed|no tab with id|could not establish connection|frame was removed|page closed/i;
+
+/** Did the prompt possibly reach the chat? Then the next attempt collects its reply rather than resending. */
+export function wasInterrupted(result) {
+  if (result.stage) return result.stage === 'reply';
+  return TRANSPORT_ERROR.test(result.error || '');
+}
+
+const LOCK_NAME = 'cga-runner';
 const REFUSAL_PAUSE_MS = 2000;
 const MAX_INTERRUPTIONS = 5; // per prompt, on top of the normal retries
 
@@ -32,12 +42,27 @@ export class Runner {
     this.wakeDelay = null;
     this.waitUntil = 0;
     this.settings = null;
-    // The driver reports the conversation URL mid-reply (see reportConversation in driver.js).
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg?.type === 'CGA_CHAT_URL' && this.busy && this.settings?.singleChat && conversationId(msg.url)) {
+    this.current = null; // the queue item being run, for progress messages
+    this.hiddenWarned = false;
+    this.discardGuarded = new Set();
+    // The driver reports the conversation URL mid-reply and each stage of a prompt (driver.js).
+    api.runtime.onMessage.addListener((msg, sender) => {
+      if (!this.busy || (sender?.tab && this.tabId != null && sender.tab.id !== this.tabId)) return;
+      if (msg?.type === 'CGA_CHAT_URL' && this.settings?.singleChat && conversationId(msg.url)) {
         this.rememberChat(msg.url);
       }
+      if (msg?.type === 'CGA_PROGRESS') this.onProgress(msg);
     });
+  }
+
+  onProgress(msg) {
+    const n = (this.current?.index ?? -1) + 1;
+    if (msg.stage === 'sent') this.log('info', 'logSent', [n]);
+    if (msg.stage === 'waitingForImage') this.log('info', 'logWaitingForImage', [n]);
+    if (msg.visibility === 'hidden' && !this.hiddenWarned) {
+      this.hiddenWarned = true;
+      this.log('warn', 'logTabHidden');
+    }
   }
 
   get busy() {
@@ -57,19 +82,81 @@ export class Runner {
     this.stopRequested = false;
     this.pauseRequested = false;
     this.state = 'running';
+    this.hiddenWarned = false;
     this.changed();
-    this.log('info', 'logStarted');
+    let ran = false;
     try {
-      await this.loop();
+      // One runner per browser profile: a second open panel (another window, or the pop-out)
+      // must not drive the same queue at the same time.
+      ran = await withLock(async () => {
+        this.log('info', 'logStarted');
+        await this.loop();
+      });
+      if (!ran) this.log('warn', 'logAlreadyRunning');
     } catch (e) {
       this.log('error', 'logFatal', [String(e.message || e)]);
     } finally {
+      await this.releaseTabs();
       const halted = this.stopRequested || this.pauseRequested;
       this.state = 'idle';
       this.waitUntil = 0;
+      this.current = null;
       this.changed();
-      if (!halted) this.log('success', 'logFinished');
+      if (ran && !halted) this.log('success', 'logFinished');
     }
+  }
+
+  /** Let the browser discard ChatGPT tabs again once the run is over. */
+  async releaseTabs() {
+    for (const id of this.discardGuarded) await api.tabs.update(id, { autoDiscardable: true }).catch(() => {});
+    this.discardGuarded.clear();
+  }
+
+  /**
+   * Keep the ChatGPT tab working while the queue runs: browsers throttle hidden tabs (replies
+   * stall) and may discard idle ones. Bring it to the front of its window (without focusing the
+   * window) and opt it out of automatic discarding.
+   */
+  async keepAwake(tabId, settings) {
+    if (!this.discardGuarded.has(tabId)) {
+      const ok = await api.tabs.update(tabId, { autoDiscardable: false }).then(() => true, () => false);
+      if (ok) this.discardGuarded.add(tabId);
+    }
+    if (settings.keepTabActive === false) return;
+    const tab = await api.tabs.get(tabId).catch(() => null);
+    if (tab && !tab.active) {
+      await api.tabs.update(tabId, { active: true }).catch(() => {});
+      this.log('info', 'logTabActivated');
+    }
+  }
+
+  /** One-line summary of what the driver sees on the page, logged after a failure. */
+  async logDiagnostics() {
+    const d = await this.diagnostics();
+    if (!d || d.error) return;
+    const yes = (v) => (v ? '✓' : '✗');
+    const summary = [
+      `composer ${yes(d.composer?.found)}`,
+      `send ${yes(d.send)}`,
+      `stop ${yes(d.stop)}`,
+      `generating ${yes(d.generating)}`,
+      `turns ${d.turns}`,
+      `last ${(d.lastTurns || []).map((t) => `${t.role}${t.markdown ? '+md' : ''}${t.actionBar ? '+bar' : ''}`).join(',') || '-'}`,
+      `tab ${d.visibility}`,
+    ].join(' · ');
+    this.log('info', 'logDiagnostics', [summary]);
+  }
+
+  /** The driver's view of the ChatGPT page (null when no ChatGPT tab answers). */
+  async diagnostics() {
+    let tabId = this.tabId;
+    if (tabId == null) {
+      const all = await api.tabs.query({ url: CHAT_HOSTS.map((h) => `${h}*`) }).catch(() => []);
+      tabId = all.find((t) => t.active)?.id ?? all[0]?.id;
+    }
+    if (tabId == null) return null;
+    const res = await api.tabs.sendMessage(tabId, { type: 'CGA_DIAGNOSE' }).catch(() => null);
+    return res?.diagnostics || null;
   }
 
   pause() {
@@ -85,7 +172,7 @@ export class Runner {
     if (!this.busy) return;
     this.stopRequested = true;
     this.wakeDelay?.();
-    if (this.tabId != null) chrome.tabs.sendMessage(this.tabId, { type: 'CGA_STOP' }).catch(() => {});
+    if (this.tabId != null) api.tabs.sendMessage(this.tabId, { type: 'CGA_STOP' }).catch(() => {});
     const queue = await this.store.getQueue();
     for (const item of queue) {
       if (item.status === STATUS.RUNNING) Object.assign(item, { status: STATUS.QUEUED, interrupted: true });
@@ -110,6 +197,7 @@ export class Runner {
       if (!item) break;
 
       const resume = !!item.interrupted;
+      this.current = item;
       item.status = STATUS.RUNNING;
       item.error = '';
       item.startedAt = Date.now();
@@ -123,6 +211,7 @@ export class Runner {
       try {
         const request = buildRequest(item, { ...settings, queueLength: queue.length }, assets, { previousImage });
         const tabId = await this.openChat(settings, firstInRun, reloadChat);
+        await this.keepAwake(tabId, settings);
         tReady = Date.now();
         firstInRun = false;
         reloadChat = false;
@@ -135,6 +224,7 @@ export class Runner {
         result = { ok: false, error: String(e.message || e) };
       }
       if (this.stopRequested) break;
+      if (!result.ok && !result.refused) await this.logDiagnostics();
 
       const fresh = await this.store.getQueue();
       const current = fresh.find((i) => i.id === item.id);
@@ -179,7 +269,7 @@ export class Runner {
         // Interrupted (tab closed/reloaded/moved, panel issue): the prompt may already be in the chat,
         // so the next attempt collects its reply rather than resending. These get their own allowance
         // so an interruption doesn't use up the prompt's normal retries.
-        current.interrupted = TRANSPORT_ERROR.test(current.error);
+        current.interrupted = wasInterrupted(result);
         if (current.interrupted && (current.interruptions || 0) < MAX_INTERRUPTIONS) {
           current.interruptions = (current.interruptions || 0) + 1;
         } else {
@@ -243,17 +333,17 @@ export class Runner {
   async prepareTab({ target = null, newChat = false, reload = false } = {}) {
     const targetId = conversationId(target);
     let tab = null;
-    if (this.tabId != null) tab = await chrome.tabs.get(this.tabId).catch(() => null);
+    if (this.tabId != null) tab = await api.tabs.get(this.tabId).catch(() => null);
     if (!tab || !isChatUrl(tab.url)) tab = null;
     if (targetId && (!tab || conversationId(tab.url) !== targetId)) {
-      const all = await chrome.tabs.query({ url: CHAT_HOSTS.map((h) => `${h}*`) });
+      const all = await api.tabs.query({ url: CHAT_HOSTS.map((h) => `${h}*`) });
       tab = all.find((t) => conversationId(t.url) === targetId) || tab;
     }
     if (!tab) {
-      const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      const [active] = await api.tabs.query({ active: true, lastFocusedWindow: true });
       if (active && isChatUrl(active.url)) tab = active;
       else {
-        const all = await chrome.tabs.query({ url: CHAT_HOSTS.map((h) => `${h}*`) });
+        const all = await api.tabs.query({ url: CHAT_HOSTS.map((h) => `${h}*`) });
         tab = all[0] || null;
       }
     }
@@ -264,7 +354,7 @@ export class Runner {
     let freshAfter = 0;
     if (!tab) {
       freshAfter = Date.now();
-      tab = await chrome.tabs.create({ url, active: true });
+      tab = await api.tabs.create({ url, active: true });
     } else if (targetId && conversationId(tab.url) !== targetId) {
       this.log('info', 'logReturningToChat');
       freshAfter = await navigate(tab.id, url);
@@ -274,7 +364,7 @@ export class Runner {
     } else if (reload) {
       freshAfter = Date.now();
       const started = waitForNavigation(tab.id);
-      await chrome.tabs.reload(tab.id);
+      await api.tabs.reload(tab.id);
       await started;
     }
     this.tabId = tab.id;
@@ -309,7 +399,7 @@ export class Runner {
   async softNewChat(tabId) {
     try {
       await this.ensureDriver(tabId);
-      const res = await chrome.tabs.sendMessage(tabId, { type: 'CGA_NEW_CHAT' });
+      const res = await api.tabs.sendMessage(tabId, { type: 'CGA_NEW_CHAT' });
       return !!res?.ok;
     } catch {
       return false;
@@ -321,14 +411,14 @@ export class Runner {
     const end = Date.now() + 30000;
     let lastInjection = 0;
     while (Date.now() < end) {
-      const res = await chrome.tabs.sendMessage(tabId, { type: 'CGA_PING' }).catch(() => null);
+      const res = await api.tabs.sendMessage(tabId, { type: 'CGA_PING' }).catch(() => null);
       const fresh = !freshAfter || (res?.loadedAt || 0) >= freshAfter - 500;
       if (res?.ok && res.ready && fresh) return res;
       // No listener: the declarative content script didn't run (tab opened before install,
       // or injection raced navigation). Inject it ourselves; the driver guards against doubles.
       if (!res && Date.now() - lastInjection > 3000) {
         lastInjection = Date.now();
-        await chrome.scripting
+        await api.scripting
           .executeScript({ target: { tabId }, files: ['content/selectors.js', 'content/driver.js'] })
           .catch(() => {});
       }
@@ -338,7 +428,7 @@ export class Runner {
   }
 
   async send(tabId, payload) {
-    const res = await chrome.tabs.sendMessage(tabId, { type: 'CGA_RUN', payload });
+    const res = await api.tabs.sendMessage(tabId, { type: 'CGA_RUN', payload });
     return res || { ok: false, error: 'No response from the ChatGPT tab (page reloaded?)' };
   }
 
@@ -348,21 +438,14 @@ export class Runner {
     const images = result.images || [];
     images.forEach((dataUrl, k) => {
       const ext = extFromMime(mimeFromDataUrl(dataUrl));
-      jobs.push({ url: dataUrl, filename: buildFilename({ ...common, ext: ext === 'bin' ? 'png' : ext, part: images.length > 1 ? k : null }) });
+      jobs.push({ blob: () => dataUrlToBlob(dataUrl), filename: buildFilename({ ...common, ext: ext === 'bin' ? 'png' : ext, part: images.length > 1 ? k : null }) });
     });
     const wantText = settings.mode === MODES.TEXT || settings.mode === MODES.INGREDIENTS || (settings.saveTextWithImages && result.text);
     if (wantText && result.text) {
       const body = `# Prompt\n\n${item.prompt}\n\n# Response\n\n${result.text}\n`;
-      jobs.push({ url: textDataUrl(body), filename: buildFilename({ ...common, ext: 'md' }) });
+      jobs.push({ blob: () => textBlob(body), filename: buildFilename({ ...common, ext: 'md' }) });
     }
-    for (const job of jobs) {
-      try {
-        await chrome.downloads.download({ url: job.url, filename: job.filename, conflictAction: 'uniquify', saveAs: false });
-        this.log('info', 'logDownloaded', [job.filename]);
-      } catch (e) {
-        this.log('error', 'logDownloadFailed', [job.filename, String(e.message || e)]);
-      }
-    }
+    for (const job of jobs) await this.save(job.blob, job.filename);
   }
 
   async downloadCombined(items, settings) {
@@ -372,27 +455,57 @@ export class Runner {
       .join('\n---\n\n');
     const filename = buildFilename({ project: settings.project, index: -1, prompt: 'concat-combined', ext: 'md', renameByPrompt: true })
       .replace('/000-', '/');
-    await chrome.downloads
-      .download({ url: textDataUrl(body), filename, conflictAction: 'uniquify', saveAs: false })
-      .then(() => this.log('info', 'logDownloaded', [filename]))
-      .catch((e) => this.log('error', 'logDownloadFailed', [filename, String(e.message || e)]));
+    await this.save(() => textBlob(body), filename);
   }
+
+  /** Save through the downloads API from a blob: URL (works in Chromium and Firefox alike). */
+  async save(makeBlob, filename) {
+    let url = '';
+    try {
+      url = URL.createObjectURL(await makeBlob());
+      await api.downloads.download({ url, filename, conflictAction: 'uniquify', saveAs: false });
+      this.log('info', 'logDownloaded', [filename]);
+    } catch (e) {
+      this.log('error', 'logDownloadFailed', [filename, String(e.message || e)]);
+    } finally {
+      // The download reads the blob asynchronously; keep it alive for a while.
+      if (url) setTimeout(() => URL.revokeObjectURL(url), 120000);
+    }
+  }
+}
+
+/** Run fn while holding the single-runner lock. Resolves false (without running) if it's taken. */
+async function withLock(fn) {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) {
+    await fn();
+    return true;
+  }
+  return locks.request(LOCK_NAME, { ifAvailable: true }, async (lock) => {
+    if (!lock) return false;
+    await fn();
+    return true;
+  });
+}
+
+async function dataUrlToBlob(dataUrl) {
+  return (await fetch(dataUrl)).blob();
+}
+
+function textBlob(text) {
+  return new Blob([text], { type: 'text/markdown;charset=utf-8' });
 }
 
 /** Start loading url in the tab; resolves once loading has begun. Returns the navigation start time. */
 async function navigate(tabId, url) {
   const startedAt = Date.now();
   const started = waitForNavigation(tabId);
-  await chrome.tabs.update(tabId, { url, active: true });
+  await api.tabs.update(tabId, { url, active: true });
   await started;
   return startedAt;
 }
 
 const secs = (ms) => (Math.max(0, ms) / 1000).toFixed(1);
-
-function textDataUrl(text) {
-  return `data:text/markdown;charset=utf-8,${encodeURIComponent(text)}`;
-}
 
 /** Resolve as soon as the tab starts loading a new page (or after 5 s). Attach before navigating. */
 function waitForNavigation(tabId, timeout = 5000) {
@@ -400,12 +513,12 @@ function waitForNavigation(tabId, timeout = 5000) {
     const timer = setTimeout(finish, timeout);
     function finish() {
       clearTimeout(timer);
-      chrome.tabs.onUpdated.removeListener(listener);
+      api.tabs.onUpdated.removeListener(listener);
       resolve();
     }
     function listener(id, info) {
       if (id === tabId && (info.status === 'loading' || info.url)) finish();
     }
-    chrome.tabs.onUpdated.addListener(listener);
+    api.tabs.onUpdated.addListener(listener);
   });
 }

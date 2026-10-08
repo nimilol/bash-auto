@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "プロンプト #{0}：チャット準備 {1} 秒、回答 {2} 秒。"
+  },
+  "keepTabActive": {
+    "message": "実行中は ChatGPT タブを前面に保つ"
+  },
+  "keepTabActiveHint": {
+    "message": "ブラウザーはバックグラウンドのタブを低速化するため、ChatGPT の返信が止まることがあります。各プロンプトの前にタブをウィンドウの前面に戻します（フォーカスは移動しません）。"
+  },
+  "copyDiagnostics": {
+    "message": "診断情報をコピー"
+  },
+  "copyDiagnosticsHint": {
+    "message": "うまく動かない場合は ChatGPT を開いて「診断情報をコピー」を押し、結果を不具合報告に貼り付けてください。"
+  },
+  "openInWindow": {
+    "message": "別ウィンドウで開く"
+  },
+  "logSent": {
+    "message": "プロンプト #{0}: 送信しました。返信を待っています…"
+  },
+  "logWaitingForImage": {
+    "message": "プロンプト #{0}: 画像を待っています…"
+  },
+  "logTabHidden": {
+    "message": "ChatGPT タブが非表示です（ウィンドウが最小化されていませんか？）。ウィンドウを表示したままにしないと返信が止まることがあります。"
+  },
+  "logTabActivated": {
+    "message": "ChatGPT タブを前面に戻しました。"
+  },
+  "logAlreadyRunning": {
+    "message": "別のパネルがすでにキューを実行中です。そちらを使うか、先に停止してください。"
+  },
+  "logNeedHostAccess": {
+    "message": "実行するには chatgpt.com へのアクセス許可が必要です。もう一度「開始」を押して許可してください。"
+  },
+  "logDiagnostics": {
+    "message": "ページの確認: {0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "診断情報をクリップボードにコピーしました。不具合報告に貼り付けてください。"
   }
 }

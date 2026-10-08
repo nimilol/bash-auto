@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "프롬프트 #{0}: 채팅 준비 {1}초, 답변 {2}초."
+  },
+  "keepTabActive": {
+    "message": "실행 중에는 ChatGPT 탭을 앞에 유지"
+  },
+  "keepTabActiveHint": {
+    "message": "브라우저는 백그라운드 탭을 느리게 만들어 ChatGPT 응답이 멈출 수 있습니다. 각 프롬프트 전에 탭을 창의 앞쪽으로 가져옵니다(포커스는 그대로 유지)."
+  },
+  "copyDiagnostics": {
+    "message": "진단 정보 복사"
+  },
+  "copyDiagnosticsHint": {
+    "message": "문제가 있나요? ChatGPT를 연 상태에서 진단 정보 복사를 누르고 결과를 버그 신고에 붙여 넣으세요."
+  },
+  "openInWindow": {
+    "message": "별도 창에서 열기"
+  },
+  "logSent": {
+    "message": "프롬프트 #{0}: 전송됨, 응답을 기다리는 중…"
+  },
+  "logWaitingForImage": {
+    "message": "프롬프트 #{0}: 이미지를 기다리는 중…"
+  },
+  "logTabHidden": {
+    "message": "ChatGPT 탭이 숨겨져 있습니다(창이 최소화되었나요?). 창을 보이게 두지 않으면 응답이 멈출 수 있습니다."
+  },
+  "logTabActivated": {
+    "message": "ChatGPT 탭을 앞으로 가져왔습니다."
+  },
+  "logAlreadyRunning": {
+    "message": "다른 패널에서 이미 대기열을 실행 중입니다. 그 패널을 사용하거나 먼저 중지하세요."
+  },
+  "logNeedHostAccess": {
+    "message": "실행하려면 chatgpt.com 접근 권한이 필요합니다. 시작을 다시 누르고 허용하세요."
+  },
+  "logDiagnostics": {
+    "message": "페이지 점검: {0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "진단 정보를 클립보드에 복사했습니다. 버그 신고에 붙여 넣으세요."
   }
 }

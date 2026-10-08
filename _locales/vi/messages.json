@@ -283,5 +283,44 @@
   },
   "logTimings": {
     "message": "Prompt #{0}: cuộc trò chuyện sẵn sàng sau {1} giây, trả lời sau {2} giây."
+  },
+  "keepTabActive": {
+    "message": "Giữ tab ChatGPT ở phía trước khi đang chạy"
+  },
+  "keepTabActiveHint": {
+    "message": "Trình duyệt làm chậm các tab chạy nền, có thể khiến ChatGPT ngừng trả lời. Tab sẽ được đưa lên trước trong cửa sổ của nó trước mỗi prompt (tiêu điểm của bạn không đổi)."
+  },
+  "copyDiagnostics": {
+    "message": "Sao chép thông tin chẩn đoán"
+  },
+  "copyDiagnosticsHint": {
+    "message": "Có lỗi? Mở ChatGPT, bấm Sao chép thông tin chẩn đoán rồi dán kết quả vào báo cáo lỗi."
+  },
+  "openInWindow": {
+    "message": "Mở trong cửa sổ riêng"
+  },
+  "logSent": {
+    "message": "Prompt #{0}: đã gửi, đang chờ trả lời…"
+  },
+  "logWaitingForImage": {
+    "message": "Prompt #{0}: đang chờ hình ảnh…"
+  },
+  "logTabHidden": {
+    "message": "Tab ChatGPT đang bị ẩn (cửa sổ bị thu nhỏ?). Hãy để cửa sổ hiển thị, nếu không câu trả lời có thể bị dừng."
+  },
+  "logTabActivated": {
+    "message": "Đã đưa tab ChatGPT lên phía trước."
+  },
+  "logAlreadyRunning": {
+    "message": "Một bảng điều khiển khác đang chạy hàng đợi. Hãy dùng bảng đó hoặc dừng nó trước."
+  },
+  "logNeedHostAccess": {
+    "message": "Tiện ích cần quyền truy cập chatgpt.com để chạy. Bấm Bắt đầu lần nữa và cho phép."
+  },
+  "logDiagnostics": {
+    "message": "Kiểm tra trang: {0}"
+  },
+  "logDiagnosticsCopied": {
+    "message": "Đã sao chép thông tin chẩn đoán. Hãy dán vào báo cáo lỗi của bạn."
   }
 }

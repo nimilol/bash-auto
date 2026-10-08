@@ -96,6 +96,8 @@
       <p class="hint" data-i18n="singleChatHint"></p>
       <label class="check"><input type="checkbox" data-setting="newChatPerPrompt" /> <span data-i18n="newChatPerPrompt">New chat for every prompt</span></label>
       <label class="check"><input type="checkbox" data-setting="newChatOnStart" /> <span data-i18n="newChatOnStart">Start a new chat when the run starts</span></label>
+      <label class="check"><input type="checkbox" data-setting="keepTabActive" /> <span data-i18n="keepTabActive">Keep the ChatGPT tab in front while running</span></label>
+      <p class="hint" data-i18n="keepTabActiveHint"></p>
       <hr />
       <label class="check"><input type="checkbox" data-setting="autoDownload" /> <span data-i18n="autoDownload">Auto download results</span></label>
       <label class="field"><span data-i18n="projectFolder">Project folder</span><input type="text" data-setting="project" /></label>
@@ -134,6 +136,10 @@
     <!-- Log -->
     <details class="card">
       <summary><h2 data-i18n="logHeading">Activity log</h2></summary>
+      <div class="row">
+        <button class="btn small ghost" id="copyDiagnosticsBtn" data-i18n="copyDiagnostics">Copy diagnostics</button>
+      </div>
+      <p class="hint" data-i18n="copyDiagnosticsHint"></p>
       <ul class="log" id="log"></ul>
     </details>
   </main>
