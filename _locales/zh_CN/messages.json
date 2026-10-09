@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "诊断信息已复制到剪贴板。请粘贴到问题反馈中。"
+  },
+  "confirmClearAgain": {
+    "message": "再次点击以清空"
+  },
+  "logNudged": {
+    "message": "提示词 #{0}：ChatGPT 回复中没有图片 — 已提醒一次立即生成图片。"
   }
 }

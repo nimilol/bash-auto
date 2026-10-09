@@ -75,8 +75,11 @@ async function testDriver({ name, query, thinkMs = 1500 }) {
   assert.match(img.images[0], /^data:image\/png;base64,/);
 
   const dot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  // The page always shows a spinner and a progress bar outside the composer: not an upload.
+  const attachStart = Date.now();
   const withFile = await run({ prompt: 'describe', files: [{ name: 'alice.png', dataUrl: dot }] });
   assert.match(withFile.text, /\[files: alice\.png\]/);
+  assert.ok(Date.now() - attachStart < 15000, `${name}: attaching took ${Date.now() - attachStart} ms (page spinner mistaken for an upload?)`);
 
   const failed = await run({ prompt: 'please fail' });
   assert.match(failed.error, /something went wrong/i);
@@ -97,13 +100,34 @@ async function testDriver({ name, query, thinkMs = 1500 }) {
   const sentAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('sent')).length);
   assert.equal(sentAfter - sentBefore, 1, 'resumeIfSent must not resend; a normal run must');
 
+  const sentCount = () => page.evaluate(() => JSON.parse(localStorage.getItem('sent')).length);
+
+  // ChatGPT asks a question instead of drawing: one follow-up in the same chat, then the image.
+  const beforeAsk = await sentCount();
+  const asked = await run({ prompt: 'ask first: an image of a fox', expectImages: true });
+  assert.equal(asked.images?.length, 1, `${name}: image after the nudge (${asked.error || ''})`);
+  assert.equal(asked.nudged, true);
+  assert.equal(await sentCount() - beforeAsk, 2, `${name}: the prompt and exactly one nudge`);
+
+  // The image is still on its way when the time limit hits: a 'reply' error (pick it up next
+  // time), never a 'chatgpt' one (which would send the prompt again).
+  await page.evaluate(() => localStorage.setItem('lateImageMs', '15000'));
+  const beforeLate = await sentCount();
+  const late = await page.evaluate((o) => globalThis.__CGA_DRIVER.run(o).catch((e) => ({ error: e.message, stage: e.stage })),
+    { prompt: 'a late image of a boat', expectImages: true, stableMs: 400, timeoutMs: 8000, imageWaitMs: 1000 });
+  assert.equal(late.stage, 'reply', `${name}: late image -> ${JSON.stringify(late)}`);
+  const lateResumed = await run({ prompt: 'a late image of a boat', expectImages: true, resumeIfSent: true });
+  assert.equal(lateResumed.images?.length, 1, `${name}: late image picked up on resume (${lateResumed.error || ''})`);
+  assert.equal(lateResumed.resumed, true);
+  assert.equal(await sentCount() - beforeLate, 1, `${name}: the late-image prompt was sent once`);
+
   const sent = await page.evaluate(() => JSON.parse(localStorage.getItem('sent')));
   assert.equal(new Set(sent).size, sent.length - 1, `${name}: only the deliberate resend is a duplicate: ${sent}`);
   const misclicks = await page.evaluate(() => [localStorage.getItem('wrongClicks'), localStorage.getItem('stoppedReplies')]);
   assert.deepEqual(misclicks, [null, null], `${name}: never clicked Voice/Dictation or Stop`);
 
   await browser.close();
-  console.log(`ok - driver, ${name}: text, 3 in a row, image, files, error, refusal, resume`);
+  console.log(`ok - driver, ${name}: text, 3 in a row, image, files, error, refusal, resume, question -> nudge, late image`);
 }
 
 /** The driver sees what it needs even when it knows none of the button labels. */
@@ -180,9 +204,17 @@ async function setSetting(panel, key, value) {
 }
 
 async function clearQueue(panel) {
-  panel.once('dialog', (d) => d.accept());
+  // Two clicks, no browser dialog (dialogs don't reliably show in side panels).
+  let dialog = false;
+  const onDialog = (d) => { dialog = true; d.dismiss(); };
+  panel.on('dialog', onDialog);
+  await panel.click('#clearBtn');
+  await panel.waitForFunction(() => document.querySelector('#clearBtn').classList.contains('danger'));
+  assert.equal(await panel.locator('.qi').count() > 0, true, 'first click only arms the button');
   await panel.click('#clearBtn');
   await panel.waitForFunction(() => !document.querySelectorAll('.qi').length);
+  panel.off('dialog', onDialog);
+  assert.equal(dialog, false, 'Clear queue must not use a browser dialog');
 }
 
 async function addPrompts(panel, text) {
@@ -250,9 +282,9 @@ async function testExtension({ name, query }) {
   // --- 2. Images in one chat, refused prompt retried once then skipped -----------------------
   await clearQueue(panel); // also forgets the session chat
   await panel.click('[data-mode="textToImage"]');
-  await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square');
+  await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square\nask first: an image of a hat');
   await startAndCheckFastFirstPrompt(panel, chat, 'tab inside a conversation');
-  await idle(panel, { completed: 2, refused: 1 });
+  await idle(panel, { completed: 3, refused: 1 });
   await debugLog();
   let q = await queueState(panel);
   assert.equal(q[1].status, 'refused');
@@ -262,8 +294,11 @@ async function testExtension({ name, query }) {
   assert.ok(q.every((i) => i.chatUrl === chat2), `all prompts in the session chat: ${q.map((i) => i.chatUrl)}`);
   assert.equal((await conversations(chat)).length, 2, 'image run used exactly one new chat');
   assert.match(await panel.locator('#log').textContent(), /refused by ChatGPT — skipped/);
+  assert.equal(q[3].imageCount, 1, 'question answered with a nudge, then the image');
+  assert.match(await panel.locator('#log').textContent(), /Prompt #4: ChatGPT answered without an image/);
+  assert.equal((await sentPrompts(chat)).filter((p) => p.startsWith('ask first')).length, 1, 'question prompt not resent');
   assert.equal(await panel.locator('#sessionLink').isVisible(), true);
-  console.log(`ok - extension, ${name}: image queue in one chat, refused prompt retried then skipped`);
+  console.log(`ok - extension, ${name}: image queue in one chat, refused prompt retried then skipped, question -> one nudge`);
 
   // --- 3. Interruption: ChatGPT tab navigated away mid-reply (first prompt of a new session) --
   await clearQueue(panel);

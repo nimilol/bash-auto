@@ -223,6 +223,10 @@ function reindex() {
 }
 
 // ---- Controls ----
+const CLEAR_CONFIRM_MS = 4000;
+let clearArmedUntil = 0; // "Clear queue" asks for a second click until this time
+let clearDisarm = null;
+
 function bindControls() {
   $('#startBtn').addEventListener('click', () => {
     if (hostAccess) {
@@ -256,7 +260,16 @@ function bindControls() {
     render();
   });
   $('#clearBtn').addEventListener('click', () => {
-    if (runner.busy || !queue.length || !confirm(t('confirmClear'))) return;
+    if (runner.busy || !queue.length) return;
+    // Two clicks instead of confirm(): browser dialogs don't reliably show in side panels.
+    if (Date.now() > clearArmedUntil) {
+      clearArmedUntil = Date.now() + CLEAR_CONFIRM_MS;
+      clearTimeout(clearDisarm);
+      clearDisarm = setTimeout(render, CLEAR_CONFIRM_MS + 50);
+      render();
+      return;
+    }
+    clearArmedUntil = 0;
     queue = [];
     api.storage.local.remove(KEYS.lastImage);
     store.setSession(null);
@@ -340,6 +353,9 @@ function renderQueue() {
   $('#retryFailedBtn').disabled = !counts.failed && !counts.refused;
   $('#resetBtn').disabled = busy || !queue.length;
   $('#clearBtn').disabled = busy || !queue.length;
+  const armed = Date.now() < clearArmedUntil && !busy && queue.length > 0;
+  $('#clearBtn').textContent = t(armed ? 'confirmClearAgain' : 'clearQueue');
+  $('#clearBtn').classList.toggle('danger', armed);
   $('#startBtn').textContent = t(counts.done && counts.queued ? 'resume' : 'start');
 
   list.replaceChildren(...queue.map((item) => {

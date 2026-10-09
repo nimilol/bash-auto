@@ -163,3 +163,11 @@ test('firefoxManifest: sidebar + event page, no Chromium-only keys', () => {
   assert.ok(ff.browser_specific_settings.gecko.id);
   assert.equal(manifest.side_panel.default_path, 'sidepanel/index.html', 'source manifest untouched');
 });
+
+test('extFromUrl', async () => {
+  const { extFromUrl } = await import('../sidepanel/runner.js');
+  assert.equal(extFromUrl('https://files.oaiusercontent.com/file-abc.webp?se=1&sig=x'), 'webp');
+  assert.equal(extFromUrl('https://x.com/a/b.JPEG'), 'jpg');
+  assert.equal(extFromUrl('https://chatgpt.com/backend-api/estuary/content?id=file_1'), 'png');
+  assert.equal(extFromUrl('not a url'), 'png');
+});

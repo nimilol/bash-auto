@@ -59,6 +59,7 @@ export class Runner {
     const n = (this.current?.index ?? -1) + 1;
     if (msg.stage === 'sent') this.log('info', 'logSent', [n]);
     if (msg.stage === 'waitingForImage') this.log('info', 'logWaitingForImage', [n]);
+    if (msg.stage === 'nudged') this.log('info', 'logNudged', [n]);
     if (msg.visibility === 'hidden' && !this.hiddenWarned) {
       this.hiddenWarned = true;
       this.log('warn', 'logTabHidden');
@@ -240,9 +241,11 @@ export class Runner {
         current.output = (result.text || '').slice(0, 20000);
         current.imageCount = (result.images || []).length;
         current.chatUrl = result.url || '';
-        if (result.images?.length) {
-          previousImage = { name: `chain-${current.index + 1}.png`, dataUrl: result.images[result.images.length - 1] };
-          if (settings.chain) await this.store.setLastImage(previousImage);
+        if (result.images?.length && settings.chain) {
+          // Chain mode feeds this image into the next prompt; it must be data the driver can attach.
+          const dataUrl = await asDataUrl(result.images[result.images.length - 1]);
+          previousImage = dataUrl ? { name: `chain-${current.index + 1}.png`, dataUrl } : null;
+          if (previousImage) await this.store.setLastImage(previousImage);
         }
         combined.push(current);
         await this.store.saveQueue(fresh);
@@ -436,16 +439,22 @@ export class Runner {
     const common = { project: settings.project, index: item.index, prompt: item.prompt, renameByPrompt: settings.renameByPrompt };
     const jobs = [];
     const images = result.images || [];
-    images.forEach((dataUrl, k) => {
-      const ext = extFromMime(mimeFromDataUrl(dataUrl));
-      jobs.push({ blob: () => dataUrlToBlob(dataUrl), filename: buildFilename({ ...common, ext: ext === 'bin' ? 'png' : ext, part: images.length > 1 ? k : null }) });
+    images.forEach((image, k) => {
+      const part = images.length > 1 ? k : null;
+      if (/^https?:/i.test(image)) {
+        // The page couldn't read the image (cross-origin): let the download manager fetch it.
+        jobs.push({ url: image, filename: buildFilename({ ...common, ext: extFromUrl(image), part }) });
+        return;
+      }
+      const ext = extFromMime(mimeFromDataUrl(image));
+      jobs.push({ blob: () => dataUrlToBlob(image), filename: buildFilename({ ...common, ext: ext === 'bin' ? 'png' : ext, part }) });
     });
     const wantText = settings.mode === MODES.TEXT || settings.mode === MODES.INGREDIENTS || (settings.saveTextWithImages && result.text);
     if (wantText && result.text) {
       const body = `# Prompt\n\n${item.prompt}\n\n# Response\n\n${result.text}\n`;
       jobs.push({ blob: () => textBlob(body), filename: buildFilename({ ...common, ext: 'md' }) });
     }
-    for (const job of jobs) await this.save(job.blob, job.filename);
+    for (const job of jobs) await this.save(job.blob || job.url, job.filename);
   }
 
   async downloadCombined(items, settings) {
@@ -458,18 +467,23 @@ export class Runner {
     await this.save(() => textBlob(body), filename);
   }
 
-  /** Save through the downloads API from a blob: URL (works in Chromium and Firefox alike). */
-  async save(makeBlob, filename) {
+  /**
+   * Save through the downloads API, from a blob: URL (works in Chromium and Firefox alike), or
+   * straight from an http(s) URL when given a string.
+   */
+  async save(source, filename) {
     let url = '';
+    let objectUrl = '';
     try {
-      url = URL.createObjectURL(await makeBlob());
+      if (typeof source === 'string') url = source;
+      else url = objectUrl = URL.createObjectURL(await source());
       await api.downloads.download({ url, filename, conflictAction: 'uniquify', saveAs: false });
       this.log('info', 'logDownloaded', [filename]);
     } catch (e) {
       this.log('error', 'logDownloadFailed', [filename, String(e.message || e)]);
     } finally {
       // The download reads the blob asynchronously; keep it alive for a while.
-      if (url) setTimeout(() => URL.revokeObjectURL(url), 120000);
+      if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
     }
   }
 }
@@ -486,6 +500,31 @@ async function withLock(fn) {
     await fn();
     return true;
   });
+}
+
+/** Image extension from a URL's path, png when it doesn't say. */
+export function extFromUrl(url) {
+  try {
+    const m = /\.(png|jpe?g|webp|gif)$/i.exec(new URL(url).pathname);
+    if (m) return m[1].toLowerCase().replace('jpeg', 'jpg');
+  } catch { /* not a URL */ }
+  return 'png';
+}
+
+/** A data: URL as is; an http(s) image fetched into one (null if the panel can't read it). */
+async function asDataUrl(image) {
+  if (!/^https?:/i.test(image)) return image;
+  try {
+    const blob = await (await fetch(image, { credentials: 'include' })).blob();
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 async function dataUrlToBlob(dataUrl) {

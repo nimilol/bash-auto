@@ -19,6 +19,8 @@ ChatGPT Automation is a browser extension (Manifest V3, for Chrome, Edge, Brave,
 - **Keep everything in one chat** (on by default): every prompt of the queue goes into a single ChatGPT conversation, the *session chat*, instead of scattering images across many chats. The panel shows a link to it, and **New session chat** starts a fresh one. Clearing the queue also starts a fresh one.
 - **Auto-resume after interruptions**: if the ChatGPT tab is closed, reloaded, or moved to another chat, the network drops, or the side panel is closed mid-run, the extension goes back to the session chat and continues from the prompt where it stopped. If that prompt was already sent, it collects the reply instead of sending it again. Interruptions don't use up the prompt's normal retries.
 - **Refusal handling**: when ChatGPT declines to generate an image (content policy), the prompt is retried (**Retries when refused**, default 1) in the same chat. If it's refused again, it's marked **Refused** and the queue moves straight on to the next prompt. **Retry failed** also re-queues refused prompts.
+- **When ChatGPT asks instead of drawing** ("Would you like it in landscape or portrait?"), the extension answers once in the same chat ("Yes, please generate the image now, exactly as described.") and waits for the image, instead of sending the prompt again. The follow-up text is `CGA_IMAGE_NUDGE` in `content/selectors.js`.
+- **Slow images are never sent twice**: the extension waits for an image up to the **Timeout per prompt**. If ChatGPT is still drawing when time runs out, the next attempt picks that image up in the same chat.
 
 ### ✍️ Text mode
 - One text reply per prompt, saved as a Markdown file (prompt + response)
@@ -122,7 +124,7 @@ ChatGPT's page structure changes from time to time. In September 2026, for examp
 - **Completion** means the Stop button is gone, the reply has stopped changing, and the copy/action bar is showing. When none of those can be seen, a long quiet period counts instead. If nothing happens for 3 minutes, the prompt is retried.
 - **Duplicates.** A prompt that already reached the chat is never sent again. After an interruption, the extension collects its reply instead.
 
-Everything page-specific lives in [`content/selectors.js`](content/selectors.js): selectors, button labels (`CGA_LABELS`), error phrases (`CGA_ERROR_PATTERNS`) and refusal phrases (`CGA_REFUSAL_PATTERNS`). Updating that file is usually all it takes. **Copy diagnostics** (in the Activity log) shows exactly which parts of the page the driver can and can't see.
+Everything page-specific lives in [`content/selectors.js`](content/selectors.js): selectors, button labels (`CGA_LABELS`), error phrases (`CGA_ERROR_PATTERNS`) and refusal phrases (`CGA_REFUSAL_PATTERNS`), and the image follow-up (`CGA_IMAGE_NUDGE`). Updating that file is usually all it takes. **Copy diagnostics** (in the Activity log) shows exactly which parts of the page the driver can and can't see.
 
 ## Troubleshooting
 

@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "Diagnostics copied to the clipboard. Paste them into your bug report."
+  },
+  "confirmClearAgain": {
+    "message": "Click again to clear"
+  },
+  "logNudged": {
+    "message": "Prompt #{0}: ChatGPT answered without an image — asked it once to generate the image now."
   }
 }

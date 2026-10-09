@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "Diagnóstico copiado al portapapeles. Pégalo en tu informe."
+  },
+  "confirmClearAgain": {
+    "message": "Haz clic otra vez para vaciar"
+  },
+  "logNudged": {
+    "message": "Prompt n.º {0}: ChatGPT respondió sin imagen — se le pidió una vez que genere la imagen ahora."
   }
 }

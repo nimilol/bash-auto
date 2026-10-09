@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "진단 정보를 클립보드에 복사했습니다. 버그 신고에 붙여 넣으세요."
+  },
+  "confirmClearAgain": {
+    "message": "한 번 더 클릭하면 비웁니다"
+  },
+  "logNudged": {
+    "message": "프롬프트 #{0}: ChatGPT가 이미지 없이 답변함 — 지금 이미지를 생성하도록 한 번 요청했습니다."
   }
 }

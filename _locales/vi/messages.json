@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "Đã sao chép thông tin chẩn đoán. Hãy dán vào báo cáo lỗi của bạn."
+  },
+  "confirmClearAgain": {
+    "message": "Nhấn lần nữa để xóa"
+  },
+  "logNudged": {
+    "message": "Prompt #{0}: ChatGPT trả lời mà không có ảnh — đã nhắc một lần để tạo ảnh ngay."
   }
 }

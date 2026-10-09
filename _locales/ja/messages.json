@@ -322,5 +322,11 @@
   },
   "logDiagnosticsCopied": {
     "message": "診断情報をクリップボードにコピーしました。不具合報告に貼り付けてください。"
+  },
+  "confirmClearAgain": {
+    "message": "もう一度クリックで空にする"
+  },
+  "logNudged": {
+    "message": "プロンプト #{0}：ChatGPT が画像なしで回答 — 今すぐ画像を生成するよう一度依頼しました。"
   }
 }

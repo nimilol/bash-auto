@@ -18,7 +18,11 @@
     - Replies are stored as soon as a prompt is sent (the server keeps generating even if the
       page goes away), then streamed on screen.
     - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
-      "slow" -> long streaming.
+      "slow" -> long streaming, "ask first" -> a question back instead of an image (the image
+      comes with the next message), "late image" -> the image shows up a few seconds after the
+      reply text is done and Stop is gone (?lateImageMs=…).
+    - The page header always shows a spinner and a progress bar outside the composer, like the
+      real site's loaders, which must not be mistaken for an upload in progress.
 
     Two page layouts, picked with ?ui=legacy|2026 (remembered in localStorage):
     - legacy: the markup the extension was first built against (#prompt-textarea, data-testid
@@ -30,7 +34,11 @@
       div); the Copy action bar shows up only after a reply is finished; and every reply starts
       with a few silent seconds of "Thinking".
   -->
-  <nav><a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a></nav>
+  <nav>
+    <a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a>
+    <svg class="animate-spin" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#999" fill="none" stroke-dasharray="20 10"/></svg>
+    <span role="progressbar" aria-valuenow="40" style="display:inline-block;width:40px;height:4px;background:#ccc"></span>
+  </nav>
   <main id="thread"></main>
   <form id="composerForm" onsubmit="return false">
     <input type="file" accept="image/*" multiple hidden id="upload" />
@@ -45,6 +53,7 @@
   };
   if (params.get('ui')) db.set('ui', params.get('ui'));
   if (params.get('lang')) db.set('lang', params.get('lang'));
+  if (params.get('lateImageMs')) db.set('lateImageMs', Number(params.get('lateImageMs')));
   const UI = db.get('ui', 'legacy');
   const LABELS = {
     en: { send: 'Send prompt', stop: 'Stop streaming', voice: 'Start voice mode', dictate: 'Dictate button', copy: 'Copy', attach: 'Add photos & files', thinking: 'Thinking' },
@@ -185,6 +194,7 @@
 
   function replyFor(prompt, files) {
     if (/fail/i.test(prompt)) return { text: 'Something went wrong. Please try again later.', image: false };
+    if (/ask first/i.test(prompt)) return { text: 'Sure! Would you like it in landscape or portrait?', image: false };
     if (/forbidden/i.test(prompt)) {
       return { text: 'I can’t create that image because the request violates our content policies.', image: false };
     }
@@ -263,12 +273,17 @@
       body.textContent += (body.textContent ? ' ' : '') + word;
       await new Promise((r) => setTimeout(r, wordDelay));
     }
-    if (reply.image && !stopRequested) await addImage(turn);
+    const late = reply.image && /late image/i.test(prompt) && !stopRequested;
+    if (reply.image && !stopRequested && !late) await addImage(turn);
     generating = false;
-    if (UI === '2026') {
-      addActionBar(turn);
-      updateSlot();
-    } else stop.replaceWith(slot);
+    if (UI === '2026') updateSlot();
+    else stop.replaceWith(slot);
+    if (late) {
+      // Stop is gone and the text is done, but the picture is still on its way.
+      await new Promise((r) => setTimeout(r, Number(db.get('lateImageMs', 6000))));
+      await addImage(turn);
+    }
+    addActionBar(turn);
   }
 </script>
 </body>

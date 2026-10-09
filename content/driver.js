@@ -293,9 +293,16 @@
         target.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
       }
     }
-    // Give the upload time to start, then wait until it's finished and send is possible.
-    await sleep(1500);
-    await waitFor(() => !q(S().uploadInProgress), { timeout: 120000, label: 'image upload', stage: 'send' });
+    // Give the upload time to start, then wait until no progress indicator is left in the
+    // composer. (submit() also waits for Send to be enabled, which ChatGPT holds back until
+    // uploads finish.) Spinners elsewhere on the page are ignored.
+    await sleep(1000);
+    await waitFor(() => !uploading(), { timeout: 120000, label: 'image upload', stage: 'send' });
+  }
+
+  function uploading() {
+    const area = composerArea();
+    return !!area && qa(S().uploadInProgress, area).some(visible);
   }
 
   function pressEnter(el) {
@@ -308,7 +315,7 @@
    * Confirmation = a new turn, ChatGPT replying, or the composer cleared; once any of those shows,
    * nothing is sent again.
    */
-  async function submit(turnsBefore) {
+  async function submit(turnsBefore, { sendWaitMs = 30000 } = {}) {
     const box = composer();
     const sent = () => {
       if (isGenerating()) generationSeen = true;
@@ -319,7 +326,7 @@
     const btn = await waitFor(() => {
       const b = findSend();
       return enabled(b) ? b : null;
-    }, { timeout: 30000 }).catch(() => null);
+    }, { timeout: sendWaitMs }).catch(() => null);
     if (btn) {
       btn.click();
       if (await confirm()) return 'button';
@@ -427,55 +434,18 @@
   // finish between two checks, so submit() records it too).
   let generationSeen = false;
 
+  const MIN_IMAGE_WAIT_MS = 4 * 60 * 1000;
+  // After the reply text is done, an image that is still coming shows activity within this long.
+  const IMAGE_ACTIVITY_MS = 30000;
+
+  /** A finished text reply that asks something back ("Would you like it in landscape?"). */
+  const asksQuestion = (text) => /[?？]\s*$/.test(String(text || '').trim());
+
   /**
-   * Run one prompt: attach files, type, send, wait for completion, and extract results.
-   * opts: { prompt, files:[{name,dataUrl}], expectImages, resumeIfSent, timeoutMs, stableMs, imageWaitMs }
-   * resumeIfSent: if this exact prompt is already the latest one in the chat (the run was
-   *   interrupted after sending), collect its reply instead of sending it a second time.
-   * Returns { text, images, url, resumed } or { refused: true, error, text, url } when ChatGPT
-   * declined to generate the image. Errors carry .stage (see fail()).
+   * Wait for the reply to `anchorPrompt` (the turn at or after `from` showing it) to finish.
+   * Returns the reply turns. Throws 'reply' errors on timeout/stall, 'chatgpt' on ChatGPT errors.
    */
-  async function run(opts) {
-    const {
-      prompt,
-      files = [],
-      expectImages = false,
-      resumeIfSent = false,
-      timeoutMs = 10 * 60 * 1000,
-      stableMs = 2500,
-      imageWaitMs = 4 * 60 * 1000,
-    } = opts || {};
-    if (!prompt) throw fail('Empty prompt', 'send');
-    phase = 'send';
-    generationSeen = false;
-
-    let from = 0; // replies are looked for after the anchor turn at or after this index
-    let alreadySent = false;
-    if (resumeIfSent) {
-      // Sent already if our prompt is one of the last two turns (followed by its reply, or with
-      // ChatGPT still working on it).
-      const count = turns().length;
-      const anchor = findAnchor(prompt, count - 2);
-      alreadySent = anchor !== -1 && anchor >= count - 2 && (anchor < count - 1 || isGenerating());
-      if (alreadySent) {
-        from = anchor;
-        phase = 'reply';
-      }
-    }
-
-    if (!alreadySent) {
-      await waitFor(() => !isGenerating(), { timeout: 90000, label: 'the previous reply to finish', stage: 'send' });
-      await attachFiles(files);
-      await setPrompt(prompt);
-      progress('typed');
-      from = turns().length;
-      await submit(from);
-      phase = 'reply';
-      progress('sent');
-    }
-
-    const started = Date.now();
-    const deadline = started + timeoutMs;
+  async function collectReply({ anchorPrompt, from, deadline, expectImages, stableMs }) {
     let lastSig = '';
     let lastChange = Date.now();
     let stopSeen = generationSeen;
@@ -487,7 +457,7 @@
       reportConversation();
       const generating = isGenerating();
       if (generating) stopSeen = true;
-      reply = replyTurns(prompt, from);
+      reply = replyTurns(anchorPrompt, from);
       const text = textOf(reply);
       const imageCount = imagesIn(reply).length;
       const bar = hasActionBar(reply);
@@ -510,62 +480,202 @@
       if (!generating && quiet >= stableMs && (hasContent || (expectImages && reply.length))) {
         // Done when ChatGPT says so: the action bar, the Stop button we saw went away, or Send is
         // back. If none of these exist on this page, after a long quiet spell.
-        if (bar || stopSeen || findSend() || quiet >= QUIET_FALLBACK_MS) break;
+        if (bar || stopSeen || findSend() || quiet >= QUIET_FALLBACK_MS) return reply;
       }
       if (!generating && quiet >= STALL_MS) {
         throw fail(`ChatGPT stopped responding (nothing new for ${Math.round(STALL_MS / 60000)} min)`, 'reply');
       }
     }
+  }
+
+  /**
+   * The reply's text is done but no image yet: wait for one until `deadline`.
+   * Returns { images, reply } with images found, { refused } or { noImage } when ChatGPT is
+   * clearly finished without one (a question or plain text). Throws a 'reply' error if it is
+   * still working at the deadline, so the next attempt picks the image up instead of resending.
+   */
+  async function awaitImage({ anchorPrompt, from, deadline }) {
+    progress('waitingForImage');
+    let reply = replyTurns(anchorPrompt, from);
+    let lastSig = '';
+    let lastActivity = Date.now();
+    while (Date.now() < deadline) {
+      await sleep(1000);
+      reply = replyTurns(anchorPrompt, from);
+      const generating = isGenerating();
+      let images = imagesIn(reply);
+      if (images.length && !generating) {
+        await sleep(3000); // let every image in the set finish loading
+        reply = replyTurns(anchorPrompt, from);
+        images = imagesIn(reply);
+        return { images, reply };
+      }
+      if (!generating && refusalIn(reply)) return { refused: true, reply };
+      const err = detectError(reply);
+      if (err) throw fail(`ChatGPT error: ${err}`, 'chatgpt');
+      const text = textOf(reply);
+      const sig = `${reply.length}|${text.length}|${generating}`;
+      if (sig !== lastSig || generating) {
+        lastSig = sig;
+        lastActivity = Date.now();
+        continue;
+      }
+      // Finished without an image: the reply is closed off (action bar) or asks a question.
+      const quiet = Date.now() - lastActivity;
+      if (quiet >= 5000 && (hasActionBar(reply) || asksQuestion(text))) return { noImage: true, reply };
+    }
+    if (isGenerating() || Date.now() - lastActivity < IMAGE_ACTIVITY_MS) {
+      throw fail('The image was still being generated when the time limit was reached', 'reply');
+    }
+    return { noImage: true, reply };
+  }
+
+  /** Type and send a message, returning the turn index replies are looked for after. */
+  async function sendMessage(text, files = []) {
+    await waitFor(() => !isGenerating(), { timeout: 90000, label: 'the previous reply to finish', stage: 'send' });
+    phase = 'send';
+    generationSeen = false;
+    await attachFiles(files);
+    await setPrompt(text);
+    progress('typed');
+    const from = turns().length;
+    await submit(from, { sendWaitMs: files.length ? 120000 : 30000 });
+    phase = 'reply';
+    return from;
+  }
+
+  /**
+   * Run one prompt: attach files, type, send, wait for completion, and extract results.
+   * opts: { prompt, files:[{name,dataUrl}], expectImages, resumeIfSent, timeoutMs, stableMs, imageWaitMs }
+   * resumeIfSent: if this exact prompt is already the latest one in the chat (the run was
+   *   interrupted after sending), collect its reply instead of sending it a second time.
+   * In image modes, if ChatGPT answers with a question or text instead of an image, one follow-up
+   *   (CGA_IMAGE_NUDGE) is sent in the same chat before giving up.
+   * Returns { text, images, url, resumed, nudged } or { refused: true, error, text, url } when
+   * ChatGPT declined to generate the image. Errors carry .stage (see fail()).
+   */
+  async function run(opts) {
+    const {
+      prompt,
+      files = [],
+      expectImages = false,
+      resumeIfSent = false,
+      timeoutMs = 10 * 60 * 1000,
+      stableMs = 2500,
+      imageWaitMs = MIN_IMAGE_WAIT_MS,
+    } = opts || {};
+    if (!prompt) throw fail('Empty prompt', 'send');
+    phase = 'send';
+    generationSeen = false;
+    const nudgeText = globalThis.CGA_IMAGE_NUDGE;
+
+    let from = 0; // replies are looked for after the anchor turn at or after this index
+    let anchorPrompt = prompt;
+    let alreadySent = false;
+    let nudged = false;
+    if (resumeIfSent) {
+      // Sent already if our prompt is one of the last two turns (followed by its reply, or with
+      // ChatGPT still working on it). Also when the latest turns are our image nudge right
+      // after our prompt.
+      const count = turns().length;
+      const sentAt = (text) => {
+        const anchor = findAnchor(text, count - 2);
+        return anchor !== -1 && anchor >= count - 2 && (anchor < count - 1 || isGenerating()) ? anchor : -1;
+      };
+      const own = sentAt(prompt);
+      const nudge = expectImages && nudgeText ? sentAt(nudgeText) : -1;
+      if (own !== -1) {
+        from = own;
+      } else if (nudge !== -1 && findAnchor(prompt, nudge - 2) !== -1 && findAnchor(prompt, nudge - 2) < nudge) {
+        from = nudge;
+        anchorPrompt = nudgeText;
+        nudged = true;
+      }
+      alreadySent = own !== -1 || nudged;
+      if (alreadySent) phase = 'reply';
+    }
+
+    if (!alreadySent) {
+      from = await sendMessage(prompt, files);
+      progress('sent');
+    }
+
+    const deadline = Date.now() + timeoutMs;
+    let reply = await collectReply({ anchorPrompt, from, deadline, expectImages, stableMs });
+    let images = imagesIn(reply);
 
     const refused = () => ({ refused: true, error: `Refused by ChatGPT: "${refusalIn(reply)}"`, text: textOf(reply), url: location.href });
 
-    let images = imagesIn(reply);
     if (expectImages && !images.length) {
       if (refusalIn(reply)) return refused();
-      progress('waitingForImage');
-      const imgDeadline = Date.now() + imageWaitMs;
-      while (Date.now() < imgDeadline) {
-        await sleep(1000);
-        reply = replyTurns(prompt, from);
+      // Wait for the image until the prompt's own time limit (at least imageWaitMs).
+      const imageDeadline = () => Math.max(Date.now() + Math.min(imageWaitMs, MIN_IMAGE_WAIT_MS), deadline);
+      let waited = await awaitImage({ anchorPrompt, from, deadline: Math.max(Date.now() + imageWaitMs, deadline) });
+      if (waited.refused) { reply = waited.reply; return refused(); }
+      if (waited.noImage && !nudged && nudgeText) {
+        // ChatGPT asked something back or answered in text: ask once, in the same chat.
+        nudged = true;
+        progress('nudged');
+        anchorPrompt = nudgeText;
+        from = await sendMessage(nudgeText);
+        reply = await collectReply({ anchorPrompt, from, deadline: imageDeadline(), expectImages, stableMs });
         images = imagesIn(reply);
-        if (images.length && !isGenerating()) {
-          await sleep(3000); // let every image in the set finish loading
-          reply = replyTurns(prompt, from);
-          images = imagesIn(reply);
-          break;
+        if (!images.length) {
+          if (refusalIn(reply)) return refused();
+          waited = await awaitImage({ anchorPrompt, from, deadline: imageDeadline() });
+          if (waited.refused) { reply = waited.reply; return refused(); }
         }
-        if (!isGenerating() && refusalIn(reply)) return refused();
-        const err = detectError(reply);
-        if (err) throw fail(`ChatGPT error: ${err}`, 'chatgpt');
+      }
+      if (!images.length) {
+        reply = waited.reply || reply;
+        images = waited.images || [];
       }
       if (!images.length) throw fail('No image was generated', 'chatgpt');
     }
 
     const text = textOf(reply);
-    const dataUrls = [];
-    for (const img of images) dataUrls.push(await imageToDataUrl(img));
+    const saved = [];
+    for (const img of images) saved.push(await imageToDataUrl(img));
     progress('done');
-    return { text, images: dataUrls, url: location.href, resumed: alreadySent };
+    return { text, images: saved, url: location.href, resumed: alreadySent, nudged };
   }
 
+  /** Read a blob as a data: URL. */
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+
+  /**
+   * The image as a data: URL, or failing that its http(s) URL (the panel then saves it through
+   * the browser's download manager, which needs no CORS). Never throws for a visible image.
+   */
   async function imageToDataUrl(img) {
     const src = img.currentSrc || img.src;
+    if (src.startsWith('data:')) return src;
+    let sameOrigin = src.startsWith('blob:');
+    try { sameOrigin = sameOrigin || new URL(src, location.href).origin === location.origin; } catch { /* keep */ }
+    // Same origin: with cookies. Elsewhere (e.g. *.oaiusercontent.com signed URLs): without, so a
+    // wildcard CORS answer is accepted.
+    for (const credentials of sameOrigin ? ['include'] : ['omit', 'include']) {
+      try {
+        const res = await fetch(src, { credentials });
+        if (res.ok) {
+          const blob = await res.blob();
+          if (blob.size) return await blobToDataUrl(blob);
+        }
+      } catch { /* try the next way */ }
+    }
     try {
-      const blob = await (await fetch(src, { credentials: 'include' })).blob();
-      return await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(blob);
-      });
-    } catch {
-      // Cross-origin without CORS: try drawing to a canvas (works when the image isn't tainted).
       const c = document.createElement('canvas');
       c.width = img.naturalWidth;
       c.height = img.naturalHeight;
       c.getContext('2d').drawImage(img, 0, 0);
-      return c.toDataURL('image/png');
-    }
+      return c.toDataURL('image/png'); // throws on a cross-origin ("tainted") image
+    } catch { /* fall through */ }
+    return new URL(src, location.href).href;
   }
 
   globalThis.__CGA_DRIVER = { run, setPrompt, attachFiles, isGenerating, diagnose, findSend, findStop, turns };

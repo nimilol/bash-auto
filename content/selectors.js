@@ -31,7 +31,9 @@ globalThis.CGA_SELECTORS = {
   actionBar: ['[data-testid="copy-turn-action-button"]', '[data-testid*="turn-action"]', '[data-testid="good-response-turn-action-button"]'],
   // Images produced by ChatGPT (DALL·E / native image generation).
   generatedImage: ['img[src*="oaiusercontent"]', 'img[src*="backend-api/estuary"]', 'img[src*="/backend-api/"]', 'img[src^="blob:"]', 'img[alt*="enerated"]'],
-  uploadInProgress: ['[role="progressbar"]', 'circle[stroke-dasharray]'],
+  // Upload progress, looked for only inside the composer (spinners elsewhere on the page don't
+  // count). ChatGPT also keeps Send disabled until uploads finish, which the driver waits for.
+  uploadInProgress: ['[role="progressbar"]', 'svg[class*="animate-spin"]', '[class*="animate-spin"]'],
   errorBanner: ['[data-testid="error"]', '.text-token-text-error', 'div[class*="text-red"]', '[role="alert"]'],
 };
 
@@ -94,3 +96,7 @@ globalThis.CGA_REFUSAL_PATTERNS = [
   'not able to create',
   "can't be generated",
 ];
+
+// Sent once, in the same chat, when an image was asked for but ChatGPT replied with a question or
+// plain text instead of drawing. Edit freely; keep it short.
+globalThis.CGA_IMAGE_NUDGE = 'Yes, please generate the image now, exactly as described.';

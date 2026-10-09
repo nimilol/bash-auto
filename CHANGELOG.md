@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.1 — 2026-10-09
+
+### Fixed
+- **Slow images were sent twice.** The wait for an image was a fixed 4 minutes, separate from
+  **Timeout per prompt**. When it ran out, the prompt was sent again even if ChatGPT was still
+  drawing, leaving duplicates in the chat. The extension now waits up to the prompt's timeout. If
+  ChatGPT is still working when time runs out, the next attempt picks the image up instead of
+  resending.
+- **ChatGPT asking a question instead of drawing failed the prompt.** Replies like "Would you like
+  it in landscape?" now get one follow-up in the same chat ("Yes, please generate the image now,
+  exactly as described."), and the image is collected from that.
+- **Image → Image and Ingredients prompts could hang for 2 minutes, then fail.** Any spinner or
+  progress ring anywhere on the page was taken for an upload in progress. Only the prompt box
+  area is checked now.
+- **A generated image could fail to save.** Images served from another domain couldn't be read
+  by the page, so the whole prompt failed. The image is now read without cookies when it's on
+  another domain, and if the page still can't read it, the browser's download manager saves it
+  from its address.
+- **Clear queue could do nothing in the side panel**, where browser confirmation dialogs don't
+  reliably show. It now asks for a second click ("Click again to clear") instead.
+
 ## 1.1.0 — 2026-10-08
 
 ### Fixed
