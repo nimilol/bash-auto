@@ -26,6 +26,7 @@ export function wasInterrupted(result) {
 const LOCK_NAME = 'cga-runner';
 const REFUSAL_PAUSE_MS = 2000;
 const MAX_INTERRUPTIONS = 5; // per prompt, on top of the normal retries
+const WAIT_REPORT_MS = 60000; // "Page check" in the log this often while a prompt is running
 
 export class Runner {
   /**
@@ -140,8 +141,10 @@ export class Runner {
       `composer ${yes(d.composer?.found)}`,
       `send ${yes(d.send)}`,
       `stop ${yes(d.stop)}`,
-      `generating ${yes(d.generating)}`,
+      `generating ${yes(d.generating)}${d.generatingBy ? ` (${d.generatingBy})` : ''}`,
       `turns ${d.turns}`,
+      `anchor ${d.anchor ?? '-'}`,
+      `images ${d.replyImages ?? '-'}/${(d.newImages || []).join('+') || '0'}`,
       `last ${(d.lastTurns || []).map((t) => `${t.role}${t.markdown ? '+md' : ''}${t.actionBar ? '+bar' : ''}`).join(',') || '-'}`,
       `tab ${d.visibility}`,
     ].join(' · ');
@@ -431,8 +434,14 @@ export class Runner {
   }
 
   async send(tabId, payload) {
-    const res = await api.tabs.sendMessage(tabId, { type: 'CGA_RUN', payload });
-    return res || { ok: false, error: 'No response from the ChatGPT tab (page reloaded?)' };
+    // A long wait says what it's waiting on, so a stuck prompt explains itself in the log.
+    const report = setInterval(() => this.logDiagnostics().catch(() => {}), WAIT_REPORT_MS);
+    try {
+      const res = await api.tabs.sendMessage(tabId, { type: 'CGA_RUN', payload });
+      return res || { ok: false, error: 'No response from the ChatGPT tab (page reloaded?)' };
+    } finally {
+      clearInterval(report);
+    }
   }
 
   async download(item, result, settings) {

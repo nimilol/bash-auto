@@ -20,7 +20,10 @@
     - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
       "slow" -> long streaming, "ask first" -> a question back instead of an image (the image
       comes with the next message), "late image" -> the image shows up a few seconds after the
-      reply text is done and Stop is gone (?lateImageMs=…).
+      reply text is done and Stop is gone (?lateImageMs=…), "plain image" -> the image is a data:
+      URL with a Turkish alt text (no known image selector matches it), "blurry image" -> a blurred
+      256 px preview shows for a few seconds after Stop is gone, then the final 512 px image,
+      "sticky" -> a streaming marker stays on the reply after it's finished.
     - The page header always shows a spinner and a progress bar outside the composer, like the
       real site's loaders, which must not be mistaken for an upload in progress.
 
@@ -145,12 +148,16 @@
   });
 
   // ---- Thread --------------------------------------------------------------------------
-  function imageBlobUrl() {
+  function imageCanvas(size = 512, color = '#3a7') {
     const c = document.createElement('canvas');
-    c.width = 512; c.height = 512;
+    c.width = size; c.height = size;
     const g = c.getContext('2d');
-    g.fillStyle = '#3a7'; g.fillRect(0, 0, 512, 512);
-    return new Promise((r) => c.toBlob((b) => r(URL.createObjectURL(b)), 'image/png'));
+    g.fillStyle = color; g.fillRect(0, 0, size, size);
+    return c;
+  }
+
+  function imageBlobUrl(size, color) {
+    return new Promise((r) => imageCanvas(size, color).toBlob((b) => r(URL.createObjectURL(b)), 'image/png'));
   }
 
   function addUser(text) {
@@ -184,12 +191,30 @@
     turn.append(bar);
   }
 
-  async function addImage(bot) {
+  async function addImage(bot, prompt = '') {
+    const img = document.createElement('img');
+    img.width = 512; img.height = 512;
+    if (/plain image/i.test(prompt)) {
+      img.alt = 'Görsel oluşturuldu';
+      img.src = imageCanvas().toDataURL('image/png');
+    } else {
+      img.alt = 'Generated image';
+      img.src = await imageBlobUrl();
+    }
+    await img.decode().catch(() => {});
+    bot.append(img);
+  }
+
+  /** A blurred low-res preview, like the one ChatGPT shows while still drawing. */
+  async function addPreview(bot) {
     const img = document.createElement('img');
     img.alt = 'Generated image';
     img.width = 512; img.height = 512;
-    img.src = await imageBlobUrl();
+    img.style.filter = 'blur(12px)';
+    img.src = await imageBlobUrl(256, '#c33');
+    await img.decode().catch(() => {});
     bot.append(img);
+    return img;
   }
 
   function replyFor(prompt, files) {
@@ -218,7 +243,7 @@
         const { turn, body } = addAssistant();
         thread.append(turn);
         body.textContent = t.text;
-        if (t.image) await addImage(turn);
+        if (t.image) await addImage(turn, t.prompt || '');
         addActionBar(turn);
       }
     }
@@ -238,7 +263,7 @@
     }
     const reply = replyFor(prompt, files);
     const conv = db.get(`conv:${convId}`, { turns: [] });
-    conv.turns.push({ role: 'user', text: prompt }, { role: 'assistant', ...reply });
+    conv.turns.push({ role: 'user', text: prompt }, { role: 'assistant', prompt, ...reply });
     db.set(`conv:${convId}`, conv);
     db.set('sent', [...db.get('sent', []), prompt]);
 
@@ -273,16 +298,20 @@
       body.textContent += (body.textContent ? ' ' : '') + word;
       await new Promise((r) => setTimeout(r, wordDelay));
     }
-    const late = reply.image && /late image/i.test(prompt) && !stopRequested;
-    if (reply.image && !stopRequested && !late) await addImage(turn);
+    const late = reply.image && /late image|blurry image/i.test(prompt) && !stopRequested;
+    if (reply.image && !stopRequested && !late) await addImage(turn, prompt);
     generating = false;
     if (UI === '2026') updateSlot();
     else stop.replaceWith(slot);
     if (late) {
-      // Stop is gone and the text is done, but the picture is still on its way.
+      // Stop is gone and the text is done, but the picture is still on its way (blurred preview first).
+      const preview = /blurry/i.test(prompt) ? await addPreview(turn) : null;
       await new Promise((r) => setTimeout(r, Number(db.get('lateImageMs', 6000))));
-      await addImage(turn);
+      preview?.remove();
+      await addImage(turn, prompt);
     }
+    // ChatGPT sometimes leaves a streaming marker behind on a finished reply.
+    if (/sticky/i.test(prompt)) body.dataset.isStreaming = 'true';
     addActionBar(turn);
   }
 </script>

@@ -128,7 +128,7 @@ Everything page-specific lives in [`content/selectors.js`](content/selectors.js)
 
 ## Troubleshooting
 
-- **The queue stops after the first prompt.** Update to 1.1.0 or later; this was caused by the September 2026 ChatGPT redesign. If it still happens, open the Activity log. It shows each stage ("sent, waiting for the reply…") and a *Page check* line after any failure. Click **Copy diagnostics** and include the result in your bug report.
+- **The queue stops after the first prompt, or a prompt stays on Running after ChatGPT finished.** Update to 1.1.2 or later. If it still happens, open the Activity log. It shows each stage ("sent, waiting for the reply…"), and a *Page check* line every minute while a prompt runs and after any failure. That line says what the extension is waiting on (for example `generating ✓ (stop "…")` or `images 0/0`). Click **Copy diagnostics** and include the result, plus the *Page check* lines, in your bug report.
 - **Replies stall while you work in other tabs or windows.** Leave **Keep the ChatGPT tab in front while running** on (the default) and don't minimize the ChatGPT window. In Chrome you can also add `chatgpt.com` under *Settings → Performance → Always keep these sites active*.
 - **"ChatGPT page is not ready".** Log in to chatgpt.com in that tab, and make sure there's no dialog covering the prompt box.
 - **Firefox: nothing happens on Start.** Allow access to chatgpt.com when asked, or under *about:addons → ChatGPT Automation → Permissions*.

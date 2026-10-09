@@ -136,8 +136,27 @@
 
   const enabled = (b) => !!b && !b.disabled && b.getAttribute('aria-disabled') !== 'true';
 
+  /** A streaming marker in the latest turn (or outside the thread). One left behind in an older
+   * reply doesn't mean ChatGPT is still writing. */
+  function streamingMarker() {
+    const list = turns();
+    const last = list[list.length - 1];
+    return qa(S().streaming).find((el) => {
+      const owner = list.find((t) => t.contains(el));
+      return !owner || owner === last;
+    }) || null;
+  }
+
   function isGenerating() {
-    return !!findStop() || !!q(S().streaming);
+    return !!findStop() || !!streamingMarker();
+  }
+
+  /** Which signal says ChatGPT is generating ('' when none), for diagnostics. */
+  function generatingBy() {
+    const stop = findStop();
+    if (stop) return `stop "${(stop.getAttribute('data-testid') || stop.getAttribute('aria-label') || '?').slice(0, 30)}"`;
+    const marker = streamingMarker();
+    return marker ? `marker ${S().streaming.find((sel) => marker.matches(sel)) || '?'}` : '';
   }
 
   // ---- Conversation turns -------------------------------------------------------------------
@@ -168,22 +187,26 @@
 
   /** Does this (non-reply) turn show the given prompt? Compares the first 80 characters, which
    * stay visible when ChatGPT collapses a long prompt and sit after any attachment names. */
-  function showsPrompt(turn, prompt) {
+  function showsPrompt(turn, prompt, whole = false) {
     if (isReplyLike(turn)) return false;
-    const head = flat(prompt).slice(0, 80);
+    const head = whole ? flat(prompt) : flat(prompt).slice(0, 80);
     return !!head && flat(turn.innerText).includes(head);
   }
 
   /**
    * Index of the turn holding our prompt: the first one at or after `from` that shows it (our
    * prompt comes before its reply). Falls back to the latest one anywhere, for when ChatGPT
-   * re-renders the thread and positions shift. Replies are the turns after it, so no role
-   * markers are needed.
+   * re-renders the thread and positions shift. Batch prompts often open the same way, so an
+   * earlier turn only counts when it sits right before `from` or shows the whole prompt; an
+   * older prompt with the same opening is never taken for ours. Replies are the turns after it,
+   * so no role markers are needed.
    */
   function findAnchor(prompt, from = 0) {
     const list = turns();
     for (let i = Math.max(0, from); i < list.length; i++) if (showsPrompt(list[i], prompt)) return i;
-    for (let i = list.length - 1; i >= 0; i--) if (showsPrompt(list[i], prompt)) return i;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (showsPrompt(list[i], prompt) && (i >= from - 1 || showsPrompt(list[i], prompt, true))) return i;
+    }
     return -1;
   }
 
@@ -218,16 +241,66 @@
     });
   }
 
-  function imagesIn(turnsList) {
+  const srcOf = (img) => img.currentSrc || img.src || '';
+
+  /** A preview ChatGPT is still drawing: blurred or invisible (itself or a close ancestor). */
+  function isPreview(img) {
+    let node = img;
+    for (let i = 0; i < 4 && node && node !== document.body; i++, node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (Number(style.opacity) === 0) return true;
+      const blur = /blur\(\s*([\d.]+)/.exec(style.filter || '');
+      if (blur && Number(blur[1]) > 0) return true;
+    }
+    return false;
+  }
+
+  /** Big, loaded, finished images, one per src. */
+  function finishedImages(imgs) {
     const seen = new Set();
-    return [].concat(turnsList).filter(Boolean).flatMap((t) => qa(S().generatedImage, t)).filter((img) => {
-      const src = img.currentSrc || img.src;
+    return imgs.filter((img) => {
+      const src = srcOf(img);
       if (!src || seen.has(src)) return false;
       const big = (img.naturalWidth || img.width) >= 200 || (img.naturalHeight || img.height) >= 200;
-      if (!big || !img.complete) return false;
+      if (!big || !img.complete || isPreview(img)) return false;
       seen.add(src);
       return true;
     });
+  }
+
+  /** Images the known selectors recognize as ChatGPT's, in the given turns. */
+  function imagesIn(turnsList) {
+    return finishedImages([].concat(turnsList).filter(Boolean).flatMap((t) => qa(S().generatedImage, t)));
+  }
+
+  /** Every image in the conversation, outside the prompt box. */
+  function conversationImages() {
+    const root = document.querySelector('main') || document.body;
+    const area = composerArea();
+    return [...root.querySelectorAll('img')].filter((img) => !area?.contains(img));
+  }
+
+  // Images that were on the page before the current prompt, and the messages it sent (see run()).
+  let baselineImages = new Set();
+  let sentPrompts = [];
+  // Where the current prompt's reply is looked for, for diagnostics.
+  let watching = null;
+
+  /**
+   * Images that appeared since the prompt was sent, wherever they are and whatever their
+   * address or alt text: for when the selectors or the reply turns don't match ChatGPT's page.
+   * Images in the turns of the prompts we sent (attachments) don't count.
+   */
+  function newImages(prompts = sentPrompts) {
+    const own = turns().filter((t) => roleOf(t) === 'user' || prompts.some((p) => showsPrompt(t, p)));
+    return finishedImages(conversationImages().filter((img) => !baselineImages.has(srcOf(img))
+      && !own.some((t) => t.contains(img))));
+  }
+
+  /** The reply's images: by selector first, else any new image on the page. */
+  function generatedImages(reply) {
+    const own = imagesIn(reply);
+    return own.length ? own : newImages();
   }
 
   function detectError(turnsList) {
@@ -390,6 +463,11 @@
     return ['conversation not found', 'unable to load conversation', "couldn't load conversation"].some((p) => text.includes(p));
   }
 
+  function hostOf(src) {
+    if (/^(data|blob):/.test(src)) return src.slice(0, src.indexOf(':'));
+    try { return new URL(src, location.href).host; } catch { return '?'; }
+  }
+
   /** What the driver can see on this page; shown by "Copy diagnostics" and after failures. */
   function diagnose() {
     const box = composer();
@@ -419,6 +497,10 @@
       send: describe(sendBtn),
       stop: describe(stopBtn),
       generating: isGenerating(),
+      generatingBy: generatingBy(),
+      anchor: watching ? findAnchor(watching.anchorPrompt, watching.from) : null,
+      replyImages: watching ? imagesIn(replyTurns(watching.anchorPrompt, watching.from)).length : null,
+      newImages: newImages().map((img) => hostOf(srcOf(img))),
       turns: list.length,
       turnSelector: S().turn.find((s) => document.querySelector(s)) || 'role markers',
       lastTurns: last,
@@ -437,6 +519,12 @@
   const MIN_IMAGE_WAIT_MS = 4 * 60 * 1000;
   // After the reply text is done, an image that is still coming shows activity within this long.
   const IMAGE_ACTIVITY_MS = 30000;
+  // An image that hasn't changed for this long counts as finished even if the page still looks
+  // busy (a Stop button or streaming marker that ChatGPT left behind).
+  const IMAGE_SETTLE_MS = 45000;
+  // Before sending: a streaming marker with no Stop button and nothing changing for this long is
+  // left over from the previous reply.
+  const IDLE_MARKER_MS = 10000;
 
   /** A finished text reply that asks something back ("Would you like it in landscape?"). */
   const asksQuestion = (text) => /[?？]\s*$/.test(String(text || '').trim());
@@ -445,7 +533,8 @@
    * Wait for the reply to `anchorPrompt` (the turn at or after `from` showing it) to finish.
    * Returns the reply turns. Throws 'reply' errors on timeout/stall, 'chatgpt' on ChatGPT errors.
    */
-  async function collectReply({ anchorPrompt, from, deadline, expectImages, stableMs }) {
+  async function collectReply({ anchorPrompt, from, deadline, expectImages, stableMs, imageSettleMs }) {
+    watching = { anchorPrompt, from };
     let lastSig = '';
     let lastChange = Date.now();
     let stopSeen = generationSeen;
@@ -459,7 +548,8 @@
       if (generating) stopSeen = true;
       reply = replyTurns(anchorPrompt, from);
       const text = textOf(reply);
-      const imageCount = imagesIn(reply).length;
+      const images = expectImages ? generatedImages(reply) : imagesIn(reply);
+      const imageCount = images.length;
       const bar = hasActionBar(reply);
       if (!replying && (text || generating)) {
         replying = true;
@@ -469,7 +559,7 @@
         const err = detectError(reply);
         if (err) throw fail(`ChatGPT error: ${err}`, 'chatgpt');
       }
-      const sig = `${reply.length}|${text.length}|${imageCount}|${generating}|${bar}`;
+      const sig = `${reply.length}|${text.length}|${images.map(srcOf).join(' ')}|${generating}|${bar}`;
       if (sig !== lastSig) {
         lastSig = sig;
         lastChange = Date.now();
@@ -477,6 +567,9 @@
       }
       const quiet = Date.now() - lastChange;
       const hasContent = !!(text || imageCount);
+      // The image is there and nothing has moved for a long time: done, even if the page still
+      // shows a Stop button or streaming marker.
+      if (imageCount && quiet >= imageSettleMs) return reply;
       if (!generating && quiet >= stableMs && (hasContent || (expectImages && reply.length))) {
         // Done when ChatGPT says so: the action bar, the Stop button we saw went away, or Send is
         // back. If none of these exist on this page, after a long quiet spell.
@@ -494,21 +587,32 @@
    * clearly finished without one (a question or plain text). Throws a 'reply' error if it is
    * still working at the deadline, so the next attempt picks the image up instead of resending.
    */
-  async function awaitImage({ anchorPrompt, from, deadline }) {
+  async function awaitImage({ anchorPrompt, from, deadline, imageSettleMs }) {
+    watching = { anchorPrompt, from };
     progress('waitingForImage');
     let reply = replyTurns(anchorPrompt, from);
     let lastSig = '';
     let lastActivity = Date.now();
+    let imageSig = '';
+    let imageSince = Date.now();
     while (Date.now() < deadline) {
       await sleep(1000);
       reply = replyTurns(anchorPrompt, from);
       const generating = isGenerating();
-      let images = imagesIn(reply);
-      if (images.length && !generating) {
+      let images = generatedImages(reply);
+      const nowSig = `${images.map(srcOf).join(' ')}|${textOf(reply).length}`;
+      if (nowSig !== imageSig) {
+        imageSig = nowSig;
+        imageSince = Date.now();
+      }
+      // Done when ChatGPT stops, or when the image has sat unchanged for a long time while the
+      // page still looks busy.
+      if (images.length && (!generating || Date.now() - imageSince >= imageSettleMs)) {
         await sleep(3000); // let every image in the set finish loading
         reply = replyTurns(anchorPrompt, from);
-        images = imagesIn(reply);
-        return { images, reply };
+        images = generatedImages(reply);
+        if (images.length) return { images, reply };
+        continue;
       }
       if (!generating && refusalIn(reply)) return { refused: true, reply };
       const err = detectError(reply);
@@ -530,9 +634,28 @@
     return { noImage: true, reply };
   }
 
+  /**
+   * Wait for the previous reply to finish. A streaming marker without a Stop button that stays
+   * while nothing changes was left behind by ChatGPT: the page is idle.
+   */
+  async function waitForIdle() {
+    let sig = '';
+    let since = Date.now();
+    await waitFor(() => {
+      if (!isGenerating()) return true;
+      const list = turns();
+      const now = `${list.length}|${textOf(list.slice(-1)).length}`;
+      if (now !== sig) {
+        sig = now;
+        since = Date.now();
+      }
+      return !findStop() && Date.now() - since >= IDLE_MARKER_MS;
+    }, { timeout: 90000, label: 'the previous reply to finish', stage: 'send' });
+  }
+
   /** Type and send a message, returning the turn index replies are looked for after. */
   async function sendMessage(text, files = []) {
-    await waitFor(() => !isGenerating(), { timeout: 90000, label: 'the previous reply to finish', stage: 'send' });
+    await waitForIdle();
     phase = 'send';
     generationSeen = false;
     await attachFiles(files);
@@ -546,7 +669,7 @@
 
   /**
    * Run one prompt: attach files, type, send, wait for completion, and extract results.
-   * opts: { prompt, files:[{name,dataUrl}], expectImages, resumeIfSent, timeoutMs, stableMs, imageWaitMs }
+   * opts: { prompt, files:[{name,dataUrl}], expectImages, resumeIfSent, timeoutMs, stableMs, imageWaitMs, imageSettleMs }
    * resumeIfSent: if this exact prompt is already the latest one in the chat (the run was
    *   interrupted after sending), collect its reply instead of sending it a second time.
    * In image modes, if ChatGPT answers with a question or text instead of an image, one follow-up
@@ -563,11 +686,14 @@
       timeoutMs = 10 * 60 * 1000,
       stableMs = 2500,
       imageWaitMs = MIN_IMAGE_WAIT_MS,
+      imageSettleMs = IMAGE_SETTLE_MS,
     } = opts || {};
     if (!prompt) throw fail('Empty prompt', 'send');
     phase = 'send';
     generationSeen = false;
+    watching = null;
     const nudgeText = globalThis.CGA_IMAGE_NUDGE;
+    sentPrompts = [prompt];
 
     let from = 0; // replies are looked for after the anchor turn at or after this index
     let anchorPrompt = prompt;
@@ -593,7 +719,14 @@
       }
       alreadySent = own !== -1 || nudged;
       if (alreadySent) phase = 'reply';
+      if (nudged) sentPrompts.push(nudgeText);
     }
+
+    // Images already on the page are not this prompt's. When resuming, only those before our
+    // prompt's turn.
+    const anchorAt = alreadySent ? findAnchor(prompt, from - 2) : -1;
+    const before = anchorAt === -1 ? conversationImages() : turns().slice(0, anchorAt).flatMap((t) => [...t.querySelectorAll('img')]);
+    baselineImages = new Set(before.map(srcOf));
 
     if (!alreadySent) {
       from = await sendMessage(prompt, files);
@@ -601,8 +734,9 @@
     }
 
     const deadline = Date.now() + timeoutMs;
-    let reply = await collectReply({ anchorPrompt, from, deadline, expectImages, stableMs });
-    let images = imagesIn(reply);
+    const waitOpts = { expectImages, stableMs, imageSettleMs };
+    let reply = await collectReply({ anchorPrompt, from, deadline, ...waitOpts });
+    let images = expectImages ? generatedImages(reply) : imagesIn(reply);
 
     const refused = () => ({ refused: true, error: `Refused by ChatGPT: "${refusalIn(reply)}"`, text: textOf(reply), url: location.href });
 
@@ -610,19 +744,20 @@
       if (refusalIn(reply)) return refused();
       // Wait for the image until the prompt's own time limit (at least imageWaitMs).
       const imageDeadline = () => Math.max(Date.now() + Math.min(imageWaitMs, MIN_IMAGE_WAIT_MS), deadline);
-      let waited = await awaitImage({ anchorPrompt, from, deadline: Math.max(Date.now() + imageWaitMs, deadline) });
+      let waited = await awaitImage({ anchorPrompt, from, deadline: Math.max(Date.now() + imageWaitMs, deadline), imageSettleMs });
       if (waited.refused) { reply = waited.reply; return refused(); }
       if (waited.noImage && !nudged && nudgeText) {
         // ChatGPT asked something back or answered in text: ask once, in the same chat.
         nudged = true;
         progress('nudged');
         anchorPrompt = nudgeText;
+        sentPrompts.push(nudgeText);
         from = await sendMessage(nudgeText);
-        reply = await collectReply({ anchorPrompt, from, deadline: imageDeadline(), expectImages, stableMs });
-        images = imagesIn(reply);
+        reply = await collectReply({ anchorPrompt, from, deadline: imageDeadline(), ...waitOpts });
+        images = generatedImages(reply);
         if (!images.length) {
           if (refusalIn(reply)) return refused();
-          waited = await awaitImage({ anchorPrompt, from, deadline: imageDeadline() });
+          waited = await awaitImage({ anchorPrompt, from, deadline: imageDeadline(), imageSettleMs });
           if (waited.refused) { reply = waited.reply; return refused(); }
         }
       }

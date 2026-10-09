@@ -31,6 +31,9 @@ const LAYOUTS = [
   { name: '2026 layout, Turkish labels', query: '?ui=2026&lang=tr' },
 ];
 
+/** Width of a PNG given as a data: URL (from its IHDR chunk). */
+const pngWidth = (dataUrl) => Buffer.from(dataUrl.split(',')[1], 'base64').readUInt32BE(16);
+
 async function loadPlaywright() {
   try {
     return await import('playwright');
@@ -74,12 +77,34 @@ async function testDriver({ name, query, thinkMs = 1500 }) {
   assert.equal(img.images.length, 1);
   assert.match(img.images[0], /^data:image\/png;base64,/);
 
+  // An image no selector knows (data: URL, Turkish alt text) is still found: it's new on the page.
+  const plain = await run({ prompt: 'plain image of a cat', expectImages: true });
+  assert.equal(plain.images?.length, 1, `${name}: plain image (${plain.error || ''})`);
+  assert.equal(pngWidth(plain.images[0]), 512);
+
+  // A blurred preview shown after Stop is gone is not the result: wait for the final image.
+  const blurry = await run({ prompt: 'blurry image of a dog', expectImages: true });
+  assert.equal(blurry.images?.length, 1, `${name}: blurry image (${blurry.error || ''})`);
+  assert.equal(pngWidth(blurry.images[0]), 512, `${name}: got the blurred preview instead of the final image`);
+
+  // Batch prompts that open the same way each get their own reply.
+  const opening = 'A highly detailed photorealistic picture of a quiet harbor town at dawn, soft light, ';
+  for (const n of ['one', 'two']) {
+    const r = await run({ prompt: `${opening}variant ${n}` });
+    assert.equal(r.text, `Echo: ${opening}variant ${n}`, `${name}: shared opening, variant ${n}`);
+  }
+
   const dot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   // The page always shows a spinner and a progress bar outside the composer: not an upload.
   const attachStart = Date.now();
   const withFile = await run({ prompt: 'describe', files: [{ name: 'alice.png', dataUrl: dot }] });
   assert.match(withFile.text, /\[files: alice\.png\]/);
   assert.ok(Date.now() - attachStart < 15000, `${name}: attaching took ${Date.now() - attachStart} ms (page spinner mistaken for an upload?)`);
+
+  // ChatGPT leaves a streaming marker on the finished reply: the image still counts once it has
+  // sat unchanged, and the next prompt still goes out.
+  const sticky = await run({ prompt: 'sticky image of a fish', expectImages: true, imageSettleMs: 2000 });
+  assert.equal(sticky.images?.length, 1, `${name}: sticky image (${sticky.error || ''})`);
 
   const failed = await run({ prompt: 'please fail' });
   assert.match(failed.error, /something went wrong/i);
@@ -127,7 +152,7 @@ async function testDriver({ name, query, thinkMs = 1500 }) {
   assert.deepEqual(misclicks, [null, null], `${name}: never clicked Voice/Dictation or Stop`);
 
   await browser.close();
-  console.log(`ok - driver, ${name}: text, 3 in a row, image, files, error, refusal, resume, question -> nudge, late image`);
+  console.log(`ok - driver, ${name}: text, 3 in a row, image, unknown image, blurred preview, shared opening, files, leftover streaming marker, error, refusal, resume, question -> nudge, late image`);
 }
 
 /** The driver sees what it needs even when it knows none of the button labels. */
@@ -193,7 +218,7 @@ const idle = (panel, want) => panel.waitForFunction(
   (w) => document.querySelector('#runnerStatus').textContent === 'Idle'
     && Object.entries(w).every(([status, n]) => document.querySelectorAll(`.qi.${status}`).length === n),
   want,
-  { timeout: 120000 },
+  { timeout: 240000 },
 );
 
 async function setSetting(panel, key, value) {
@@ -282,9 +307,9 @@ async function testExtension({ name, query }) {
   // --- 2. Images in one chat, refused prompt retried once then skipped -----------------------
   await clearQueue(panel); // also forgets the session chat
   await panel.click('[data-mode="textToImage"]');
-  await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square\nask first: an image of a hat');
+  await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square\nask first: an image of a hat\nsticky image of a green square\nimage of a yellow square');
   await startAndCheckFastFirstPrompt(panel, chat, 'tab inside a conversation');
-  await idle(panel, { completed: 3, refused: 1 });
+  await idle(panel, { completed: 5, refused: 1 });
   await debugLog();
   let q = await queueState(panel);
   assert.equal(q[1].status, 'refused');
@@ -297,8 +322,12 @@ async function testExtension({ name, query }) {
   assert.equal(q[3].imageCount, 1, 'question answered with a nudge, then the image');
   assert.match(await panel.locator('#log').textContent(), /Prompt #4: ChatGPT answered without an image/);
   assert.equal((await sentPrompts(chat)).filter((p) => p.startsWith('ask first')).length, 1, 'question prompt not resent');
+  assert.equal(q[4].imageCount, 1, 'image with a leftover streaming marker completed');
+  assert.equal(q[5].imageCount, 1, 'the prompt after it was sent and completed');
+  const sent2 = await sentPrompts(chat);
+  for (const p of ['sticky image', 'image of a yellow']) assert.equal(sent2.filter((x) => x.startsWith(p)).length, 1, `${p} sent once`);
   assert.equal(await panel.locator('#sessionLink').isVisible(), true);
-  console.log(`ok - extension, ${name}: image queue in one chat, refused prompt retried then skipped, question -> one nudge`);
+  console.log(`ok - extension, ${name}: image queue in one chat, refused prompt retried then skipped, question -> one nudge, leftover streaming marker`);
 
   // --- 3. Interruption: ChatGPT tab navigated away mid-reply (first prompt of a new session) --
   await clearQueue(panel);

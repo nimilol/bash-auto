@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.2 — 2026-10-09
+
+### Fixed
+- **Text → Image: a prompt stayed on "Running" after ChatGPT finished the image, then failed, so
+  the next prompt was never sent.** A prompt only counted as done when three checks agreed: the
+  extension found the reply, ChatGPT had stopped generating, and the image matched a known image
+  address. If any one of them missed on the real page, the run waited for the full timeout. Now:
+  - Any new full-size image that shows up after the prompt counts, whatever its address or alt text.
+  - An image that has sat unchanged for 45 seconds counts as finished, even if the page still
+    shows a Stop button or a "streaming" marker that ChatGPT left behind.
+  - A streaming marker left on an older reply no longer blocks sending the next prompt.
+  - Blurred previews ChatGPT shows while still drawing are no longer saved as the result.
+- Prompts that start with the same 80 characters could have the earlier prompt's reply taken for
+  their own in single-chat mode.
+
+### Added
+- While a prompt runs, the Activity log adds a *Page check* line every minute. It says what the
+  extension is waiting on: which Stop/streaming signal it sees, whether it found the prompt, and
+  how many images it sees.
+
 ## 1.1.1 — 2026-10-09
 
 ### Fixed
