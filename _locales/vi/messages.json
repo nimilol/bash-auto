@@ -3,43 +3,79 @@
     "message": "ChatGPT Automation - Tự động ChatGPT"
   },
   "extDescription": {
-    "message": "Tự động ChatGPT cho prompt hàng loạt. Tạo và tự động tải xuống câu trả lời và hình ảnh trên ChatGPT.com."
+    "message": "Tự động ChatGPT cho hàng loạt prompt. Tạo hàng loạt và tự tải về câu trả lời, hình ảnh trên ChatGPT.com."
   },
   "appTitle": {
     "message": "ChatGPT Automation"
   },
+  "openInWindow": {
+    "message": "Mở trong cửa sổ riêng"
+  },
+  "tabControl": {
+    "message": "Điều khiển"
+  },
+  "tabSetting": {
+    "message": "Cài đặt"
+  },
   "modeHeading": {
     "message": "Chế độ"
   },
-  "modeText": {
-    "message": "Văn bản"
+  "mode_text": {
+    "message": "Xử lý văn bản"
   },
-  "modeTextToImage": {
+  "mode_ingredients": {
+    "message": "Thành phần → Văn bản"
+  },
+  "mode_textToImage": {
     "message": "Văn bản → Ảnh"
   },
-  "modeImageToImage": {
+  "mode_imageToImage": {
     "message": "Ảnh → Ảnh"
   },
-  "modeIngredients": {
-    "message": "Nguyên liệu → Văn bản"
+  "modeShort_text": {
+    "message": "Văn bản"
+  },
+  "modeShort_ingredients": {
+    "message": "Thành phần"
+  },
+  "modeShort_textToImage": {
+    "message": "Văn bản → Ảnh"
+  },
+  "modeShort_imageToImage": {
+    "message": "Ảnh → Ảnh"
   },
   "modeHint_text": {
-    "message": "Tạo câu trả lời văn bản cho từng prompt trong hàng đợi."
-  },
-  "modeHint_textToImage": {
-    "message": "Tạo ảnh từ mô tả văn bản. Mọi ảnh được tạo đều được tải xuống."
-  },
-  "modeHint_imageToImage": {
-    "message": "Gửi mỗi prompt kèm một ảnh gốc để biến đổi hoặc nâng cấp ảnh."
+    "message": "Một câu trả lời văn bản cho mỗi prompt."
   },
   "modeHint_ingredients": {
-    "message": "Gửi ảnh tham chiếu kèm mỗi prompt và thu thập câu trả lời văn bản."
+    "message": "Ảnh của bạn được gửi kèm mỗi prompt; câu trả lời văn bản được thu thập."
   },
-  "concatLabel": {
-    "message": "Chế độ nối (Concat)"
+  "modeHint_textToImage": {
+    "message": "Tạo ảnh từ mô tả văn bản. Mọi ảnh tạo ra đều được tải về."
   },
-  "concatHint": {
-    "message": "Giữ tất cả prompt trong một cuộc trò chuyện để mỗi prompt tiếp nối câu trả lời trước. Cuối cùng sẽ lưu một tệp tổng hợp."
+  "modeHint_imageToImage": {
+    "message": "Mỗi prompt được gửi kèm ảnh gốc để biến đổi chúng."
+  },
+  "uploadImages": {
+    "message": "Tải ảnh lên"
+  },
+  "ingredientImages": {
+    "message": "Ảnh / thành phần"
+  },
+  "sourceImages": {
+    "message": "Ảnh gốc"
+  },
+  "clear": {
+    "message": "Xóa"
+  },
+  "remove": {
+    "message": "Xóa"
+  },
+  "autoAddCharacters": {
+    "message": "Tự thêm ảnh nhân vật"
+  },
+  "autoAddCharactersHint": {
+    "message": "Đính kèm ảnh có tên tệp xuất hiện trong prompt: hero.png đi với prompt có chữ \"hero\"."
   },
   "aspectRatio": {
     "message": "Tỉ lệ khung hình"
@@ -47,110 +83,74 @@
   "aspectNone": {
     "message": "Không chỉ định"
   },
-  "saveTextWithImages": {
-    "message": "Lưu cả câu trả lời văn bản"
-  },
-  "chainLabel": {
-    "message": "Chế độ chuỗi (Chain)"
-  },
-  "chainHint": {
-    "message": "Dùng ảnh được tạo từ prompt trước làm đầu vào cho prompt tiếp theo."
-  },
-  "sourceImages": {
-    "message": "Ảnh gốc"
-  },
-  "addImages": {
-    "message": "Thêm ảnh"
-  },
-  "clear": {
-    "message": "Xóa"
-  },
-  "autoMatchLabel": {
-    "message": "Tự thêm ảnh theo tên tệp"
-  },
-  "autoMatchHint": {
-    "message": "Chỉ đính kèm ảnh có tên tệp xuất hiện trong prompt (vd. \"alice.png\" cho prompt nhắc đến Alice). Tắt = đính kèm tất cả."
-  },
-  "referenceImages": {
-    "message": "Ảnh tham chiếu"
-  },
   "promptsHeading": {
     "message": "Prompt"
   },
   "promptsPlaceholder": {
-    "message": "Mỗi dòng một prompt…\n\nHoặc tách prompt nhiều dòng bằng một dòng trống."
+    "message": "Nhập prompt. Mỗi prompt cách nhau bằng một dòng trống."
   },
-  "promptsHint": {
-    "message": "Mỗi dòng là một prompt. Nếu có dòng trống, mỗi khối văn bản là một prompt."
+  "uploadTxt": {
+    "message": "hoặc tải tệp .txt lên"
   },
-  "addToQueue": {
-    "message": "Thêm vào hàng đợi"
+  "promptCount": {
+    "message": "{0} prompt"
   },
-  "importFile": {
-    "message": "Nhập .txt / .csv"
+  "concurrency": {
+    "message": "Số prompt đồng thời"
   },
-  "settingsHeading": {
-    "message": "Cài đặt"
+  "promptDelay": {
+    "message": "Độ trễ giữa prompt (giây)"
   },
-  "minDelay": {
-    "message": "Độ trễ tối thiểu (giây)"
+  "randomDelay": {
+    "message": "Độ trễ ngẫu nhiên (giây)"
   },
-  "maxDelay": {
-    "message": "Độ trễ tối đa (giây)"
+  "saveToFolder": {
+    "message": "Lưu vào thư mục"
   },
-  "maxRetries": {
-    "message": "Số lần thử lại tối đa"
+  "autoRename": {
+    "message": "Tự đổi tên tệp"
   },
-  "timeoutMinutes": {
-    "message": "Thời gian chờ mỗi prompt (phút)"
-  },
-  "newChatPerPrompt": {
-    "message": "Tạo cuộc trò chuyện mới cho mỗi prompt"
-  },
-  "newChatOnStart": {
-    "message": "Tạo cuộc trò chuyện mới khi bắt đầu"
-  },
-  "autoDownload": {
-    "message": "Tự động tải kết quả"
-  },
-  "projectFolder": {
-    "message": "Thư mục dự án"
-  },
-  "renameByPrompt": {
-    "message": "Đặt tên tệp theo prompt"
-  },
-  "queueHeading": {
-    "message": "Hàng đợi"
-  },
-  "start": {
-    "message": "Bắt đầu"
-  },
-  "resume": {
-    "message": "Tiếp tục"
-  },
-  "pause": {
-    "message": "Tạm dừng"
+  "run": {
+    "message": "Chạy"
   },
   "stop": {
     "message": "Dừng"
   },
+  "fixError": {
+    "message": "Sửa lỗi"
+  },
+  "enableBackground": {
+    "message": "Bật chế độ nền"
+  },
+  "runningInBackground": {
+    "message": "Đang chạy nền"
+  },
+  "backgroundHint": {
+    "message": "Trình duyệt tạm dừng chatgpt.com khi tab bị ẩn. Chế độ nền chia sẻ tab chatgpt.com (chọn nó trong hộp thoại) để tab vẫn chạy phía sau cửa sổ khác. Không ghi lại hay gửi đi bất cứ thứ gì."
+  },
+  "queueHeading": {
+    "message": "Hàng đợi"
+  },
+  "countsLine": {
+    "message": "{0}/{1} xong · {2} lỗi · {3} bị từ chối"
+  },
   "retryFailed": {
-    "message": "Chạy lại mục lỗi"
+    "message": "Chạy lại lỗi"
   },
   "resetAll": {
-    "message": "Đặt lại tất cả"
+    "message": "Chạy lại tất cả"
   },
   "clearQueue": {
     "message": "Xóa hàng đợi"
   },
-  "keepPanelOpen": {
-    "message": "Giữ bảng này mở khi hàng đợi đang chạy. Bạn cần đăng nhập chatgpt.com."
+  "confirmClearAgain": {
+    "message": "Bấm lần nữa để xóa"
   },
   "queueEmpty": {
-    "message": "Chưa có prompt. Hãy thêm ở trên."
+    "message": "Chưa có prompt nào."
   },
-  "logHeading": {
-    "message": "Nhật ký hoạt động"
+  "keepPanelOpen": {
+    "message": "Giữ bảng này mở khi hàng đợi đang chạy. Nếu bị đóng, bấm Chạy để tiếp tục từ chỗ đã dừng."
   },
   "openChat": {
     "message": "Mở cuộc trò chuyện"
@@ -158,8 +158,14 @@
   "rerun": {
     "message": "Chạy lại"
   },
-  "remove": {
-    "message": "Xóa"
+  "optionToggleHint": {
+    "message": "Bấm để đổi"
+  },
+  "retriesCount": {
+    "message": "thử lại {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} ảnh"
   },
   "status_queued": {
     "message": "Đang chờ"
@@ -171,162 +177,243 @@
     "message": "Hoàn thành"
   },
   "status_failed": {
-    "message": "Thất bại"
+    "message": "Lỗi"
   },
-  "retriesCount": {
-    "message": "Thử lại {0}/{1}"
+  "status_refused": {
+    "message": "Bị từ chối"
   },
-  "imagesCount": {
-    "message": "{0} ảnh"
+  "phase_starting": {
+    "message": "Đang mở chat"
   },
-  "countsLine": {
-    "message": "{0}/{1} hoàn thành · {2} đang chạy · {3} đang chờ · {4} thất bại · {5} bị từ chối · {6}%"
+  "phase_typing": {
+    "message": "Đang gửi"
+  },
+  "phase_sent": {
+    "message": "Đã gửi"
+  },
+  "phase_replying": {
+    "message": "Đang trả lời"
+  },
+  "phase_image": {
+    "message": "Đang vẽ ảnh"
+  },
+  "phase_nudged": {
+    "message": "Đã yêu cầu tạo ảnh"
+  },
+  "logHeading": {
+    "message": "Nhật ký hoạt động"
+  },
+  "copyDiagnostics": {
+    "message": "Sao chép chẩn đoán"
+  },
+  "copyDiagnosticsHint": {
+    "message": "Sao chép những gì tiện ích thấy trên trang ChatGPT (không gồm nội dung prompt hay câu trả lời). Dán vào báo cáo lỗi."
+  },
+  "language": {
+    "message": "Ngôn ngữ"
+  },
+  "defaultMode": {
+    "message": "Chế độ mặc định"
+  },
+  "textOutputs": {
+    "message": "Số kết quả mỗi prompt (Văn bản)"
+  },
+  "imageOutputs": {
+    "message": "Số kết quả mỗi prompt (Ảnh)"
+  },
+  "textModel": {
+    "message": "Mô hình văn bản"
+  },
+  "imageModel": {
+    "message": "Mô hình ảnh"
+  },
+  "modelDefault": {
+    "message": "Mô hình hiện tại của ChatGPT"
+  },
+  "modelHint": {
+    "message": "Để trống để giữ mô hình đang chọn trong ChatGPT. Nếu không, nhập mã mô hình trong chatgpt.com/?model=… (vd. gpt-5)."
+  },
+  "defaultPromptMode": {
+    "message": "Chế độ prompt mặc định"
+  },
+  "defaultImageMode": {
+    "message": "Chế độ ảnh mặc định"
+  },
+  "chatMode_new": {
+    "message": "Chat mới"
+  },
+  "chatMode_concat": {
+    "message": "Nối tiếp"
+  },
+  "imageMode_new": {
+    "message": "Ảnh mới"
+  },
+  "imageMode_last": {
+    "message": "Ảnh trước"
+  },
+  "promptModeHint": {
+    "message": "Nối tiếp: prompt sau tiếp tục trong cùng cuộc trò chuyện. Ảnh trước: ảnh do prompt trước tạo ra được dùng làm đầu vào. Bấm nhãn của prompt trong hàng đợi để đổi."
+  },
+  "maxIngredientImages": {
+    "message": "Số ảnh tối đa mỗi prompt (Thành phần)"
+  },
+  "maxImageInputs": {
+    "message": "Số ảnh tối đa mỗi prompt (Ảnh → Ảnh)"
+  },
+  "maxRetries": {
+    "message": "Số lần thử lại tối đa"
+  },
+  "timeoutMinutes": {
+    "message": "Thời gian chờ mỗi prompt (phút)"
+  },
+  "textDownload": {
+    "message": "Tự tải về (Văn bản)"
+  },
+  "imageDownload": {
+    "message": "Chất lượng tự tải (Ảnh)"
+  },
+  "noDownload": {
+    "message": "Không tải"
+  },
+  "downloadMd": {
+    "message": "Markdown (.md)"
+  },
+  "downloadTxt": {
+    "message": "Văn bản thuần (.txt)"
+  },
+  "downloadOriginal": {
+    "message": "Gốc (1k)"
+  },
+  "keepTabActive": {
+    "message": "Giữ tab ChatGPT ở phía trước khi chạy"
+  },
+  "keepTabActiveHint": {
+    "message": "Khi chạy từng prompt một, tab ChatGPT được đưa lên trước trong cửa sổ trước mỗi prompt."
+  },
+  "samplePrompt": {
+    "message": "Căn nhà gỗ ấm cúng trong tuyết"
+  },
+  "downloadsFolder": {
+    "message": "Tải xuống"
   },
   "runnerIdle": {
     "message": "Rảnh"
   },
   "runnerRunning": {
-    "message": "Đang chạy…"
-  },
-  "runnerPausing": {
-    "message": "Sẽ tạm dừng sau prompt này…"
+    "message": "Đang chạy ({0})"
   },
   "runnerWaiting": {
-    "message": "Prompt tiếp theo sau {0} giây"
+    "message": "Tiếp theo sau {0}s"
   },
-  "samplePrompt": {
-    "message": "căn nhà gỗ ấm cúng trong tuyết"
+  "runnerStopping": {
+    "message": "Đang dừng…"
   },
-  "downloadsFolder": {
-    "message": "Downloads"
+  "logAdded": {
+    "message": "Đã thêm {0} prompt ({1} mục trong hàng đợi)"
   },
-  "confirmClear": {
-    "message": "Xóa tất cả prompt khỏi hàng đợi?"
+  "logNoPrompts": {
+    "message": "Hãy nhập ít nhất một prompt."
+  },
+  "logNeedSourceImages": {
+    "message": "Ảnh → Ảnh cần ít nhất một ảnh gốc: hãy tải ảnh lên trước."
+  },
+  "logNeedHostAccess": {
+    "message": "Hãy cho phép truy cập chatgpt.com để chạy hàng đợi."
   },
   "logStarted": {
-    "message": "Đã bắt đầu hàng đợi."
+    "message": "Bắt đầu hàng đợi"
+  },
+  "logAlreadyRunning": {
+    "message": "Hàng đợi đang chạy ở một bảng khác."
+  },
+  "logFatal": {
+    "message": "Dừng do lỗi: {0}"
   },
   "logFinished": {
-    "message": "Hàng đợi đã hoàn tất."
-  },
-  "logPausing": {
-    "message": "Sẽ tạm dừng sau prompt hiện tại."
+    "message": "Hàng đợi đã xong"
   },
   "logStopped": {
-    "message": "Đã dừng."
+    "message": "Đã dừng. Bấm Chạy để tiếp tục."
+  },
+  "logFixing": {
+    "message": "Sửa lỗi: dừng ChatGPT, đóng hộp thoại và tải lại chat"
+  },
+  "logFixed": {
+    "message": "Prompt {0} sẽ chạy lại"
+  },
+  "logSequential": {
+    "message": "Prompt Nối tiếp / Ảnh trước chạy lần lượt từng cái."
+  },
+  "logOpenedTabs": {
+    "message": "Đã mở thêm {0} tab ChatGPT"
   },
   "logRunning": {
-    "message": "Đang chạy prompt #{0}…"
+    "message": "Prompt {0}: bắt đầu"
+  },
+  "logSent": {
+    "message": "Prompt {0}: đã gửi, đang chờ trả lời"
+  },
+  "logWaitingForImage": {
+    "message": "Prompt {0}: ChatGPT đang vẽ ảnh"
+  },
+  "logNudged": {
+    "message": "Prompt {0}: ChatGPT trả lời không có ảnh, đã yêu cầu tạo ảnh"
+  },
+  "logNote": {
+    "message": "Prompt {0}: {1}"
+  },
+  "logPageCheck": {
+    "message": "Prompt {0}: kiểm tra trang — {1}"
+  },
+  "logResumed": {
+    "message": "Prompt {0}: đã gửi trước khi gián đoạn, lấy câu trả lời thay vì gửi lại"
   },
   "logCompleted": {
-    "message": "Prompt #{0} đã hoàn thành."
+    "message": "Prompt {0}: hoàn thành sau {1}s ({2})"
+  },
+  "logRefused": {
+    "message": "Prompt {0}: bị ChatGPT từ chối — thử thêm một lần"
+  },
+  "logRefusedSkip": {
+    "message": "Prompt {0}: bị ChatGPT từ chối — bỏ qua"
   },
   "logRetrying": {
-    "message": "Prompt #{0} lỗi: {1} — sẽ thử lại ({2}/{3})."
+    "message": "Prompt {0}: {1} — thử lại {2}/{3}"
+  },
+  "logInterrupted": {
+    "message": "Prompt {0}: {1} — lần thử sau sẽ lấy câu trả lời của nó"
   },
   "logFailed": {
-    "message": "Prompt #{0} lỗi: {1} — bỏ qua sau {2} lần thử."
+    "message": "Prompt {0}: lỗi — {1} ({2}/{3} lần thử lại)"
+  },
+  "logDiagnostics": {
+    "message": "Trang: {0}"
+  },
+  "logReturningToChat": {
+    "message": "Quay lại cuộc trò chuyện của prompt"
+  },
+  "logTabActivated": {
+    "message": "Đã đưa tab ChatGPT lên trước"
+  },
+  "logTabHidden": {
+    "message": "Tab ChatGPT đang bị ẩn. Nếu prompt bị treo, hãy bật chế độ nền hoặc giữ tab hiển thị."
   },
   "logDownloaded": {
     "message": "Đã lưu {0}"
   },
   "logDownloadFailed": {
-    "message": "Không thể lưu {0}: {1}"
+    "message": "Không lưu được {0}: {1}"
   },
-  "logFatal": {
-    "message": "Đã dừng chạy: {0}"
+  "logBackgroundOn": {
+    "message": "Đã bật chế độ nền"
   },
-  "logAdded": {
-    "message": "Đã thêm {0} prompt vào hàng đợi."
+  "logBackgroundOff": {
+    "message": "Đã tắt chế độ nền"
   },
-  "logNoPrompts": {
-    "message": "Không tìm thấy prompt nào."
-  },
-  "singleChat": {
-    "message": "Giữ mọi thứ trong một cuộc trò chuyện"
-  },
-  "singleChatHint": {
-    "message": "Tất cả prompt trong hàng đợi đi vào một cuộc trò chuyện ChatGPT. Nếu bị gián đoạn, tiện ích sẽ quay lại cuộc trò chuyện đó và tiếp tục từ chỗ đã dừng."
-  },
-  "refusalRetries": {
-    "message": "Số lần thử lại khi bị từ chối"
-  },
-  "sessionChat": {
-    "message": "Cuộc trò chuyện phiên:"
-  },
-  "sessionNone": {
-    "message": "bắt đầu từ prompt đầu tiên"
-  },
-  "newSessionChat": {
-    "message": "Cuộc trò chuyện phiên mới"
-  },
-  "status_refused": {
-    "message": "Bị từ chối"
-  },
-  "logRefused": {
-    "message": "Prompt #{0} bị ChatGPT từ chối — đang thử lại ({1}/{2})."
-  },
-  "logRefusedSkip": {
-    "message": "Prompt #{0} bị ChatGPT từ chối — bỏ qua, chuyển sang prompt tiếp theo."
-  },
-  "logResumed": {
-    "message": "Prompt #{0} đã được gửi trước khi gián đoạn — đã lấy câu trả lời mà không gửi lại."
-  },
-  "logSessionLost": {
-    "message": "Không mở được cuộc trò chuyện phiên — tiếp tục trong cuộc trò chuyện mới."
-  },
-  "logReturningToChat": {
-    "message": "Đang quay lại cuộc trò chuyện phiên…"
-  },
-  "logNewSession": {
-    "message": "Lần chạy tiếp theo sẽ bắt đầu cuộc trò chuyện phiên mới."
-  },
-  "logTimings": {
-    "message": "Prompt #{0}: cuộc trò chuyện sẵn sàng sau {1} giây, trả lời sau {2} giây."
-  },
-  "keepTabActive": {
-    "message": "Giữ tab ChatGPT ở phía trước khi đang chạy"
-  },
-  "keepTabActiveHint": {
-    "message": "Trình duyệt làm chậm các tab chạy nền, có thể khiến ChatGPT ngừng trả lời. Tab sẽ được đưa lên trước trong cửa sổ của nó trước mỗi prompt (tiêu điểm của bạn không đổi)."
-  },
-  "copyDiagnostics": {
-    "message": "Sao chép thông tin chẩn đoán"
-  },
-  "copyDiagnosticsHint": {
-    "message": "Có lỗi? Mở ChatGPT, bấm Sao chép thông tin chẩn đoán rồi dán kết quả vào báo cáo lỗi."
-  },
-  "openInWindow": {
-    "message": "Mở trong cửa sổ riêng"
-  },
-  "logSent": {
-    "message": "Prompt #{0}: đã gửi, đang chờ trả lời…"
-  },
-  "logWaitingForImage": {
-    "message": "Prompt #{0}: đang chờ hình ảnh…"
-  },
-  "logTabHidden": {
-    "message": "Tab ChatGPT đang bị ẩn (cửa sổ bị thu nhỏ?). Hãy để cửa sổ hiển thị, nếu không câu trả lời có thể bị dừng."
-  },
-  "logTabActivated": {
-    "message": "Đã đưa tab ChatGPT lên phía trước."
-  },
-  "logAlreadyRunning": {
-    "message": "Một bảng điều khiển khác đang chạy hàng đợi. Hãy dùng bảng đó hoặc dừng nó trước."
-  },
-  "logNeedHostAccess": {
-    "message": "Tiện ích cần quyền truy cập chatgpt.com để chạy. Bấm Bắt đầu lần nữa và cho phép."
-  },
-  "logDiagnostics": {
-    "message": "Kiểm tra trang: {0}"
+  "logBackgroundFailed": {
+    "message": "Chưa bật được chế độ nền: {0}. Thử mở bảng trong cửa sổ riêng (chuột phải vào nút trên thanh công cụ)."
   },
   "logDiagnosticsCopied": {
-    "message": "Đã sao chép thông tin chẩn đoán. Hãy dán vào báo cáo lỗi của bạn."
-  },
-  "confirmClearAgain": {
-    "message": "Nhấn lần nữa để xóa"
-  },
-  "logNudged": {
-    "message": "Prompt #{0}: ChatGPT trả lời mà không có ảnh — đã nhắc một lần để tạo ảnh ngay."
+    "message": "Đã sao chép chẩn đoán"
   }
 }

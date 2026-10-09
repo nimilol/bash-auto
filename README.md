@@ -2,96 +2,98 @@
 
 **Auto ChatGPT for your prompts at scale.** Batch generate and auto-download responses and images on [chatgpt.com](https://chatgpt.com).
 
-ChatGPT Automation is a browser extension (Manifest V3, for Chrome, Edge, Brave, Opera, Vivaldi, Arc and Firefox) that turns ChatGPT into a batch-processing engine. Queue dozens or hundreds of prompts in its panel and it will submit each one, wait for the reply to finish, save the result, and move on to the next prompt. No clicks, no babysitting.
+A browser extension (Manifest V3, for Chrome, Edge, Brave, Opera, Vivaldi, Arc and Firefox). Queue dozens or hundreds of prompts in its side panel. It sends each one to ChatGPT, waits for the reply to finish, saves the result, and moves on to the next prompt.
+
+Version 2 is a rebuild that follows the [ChatGPT Automation user guide](https://github.com/trgkyle/chatgpt-automation-user-guide). The Workflow editor from that guide is not built yet.
 
 <p align="center"><img src="docs/screenshot-panel.png" alt="Side panel" width="340" /></p>
 
 ## Features
 
-### 🤖 Batch processing
-- Queue prompts by typing them (one per line, or blocks separated by a blank line) or importing a `.txt` / `.csv` file (uses the `prompt` column, or the first column if there isn't one)
-- Submits each prompt, waits for generation to finish, then moves on
-- Live queue with per-prompt status (**Queued → Running → Completed / Failed / Refused**), a retry counter, a progress bar, and a link back to each conversation
-- Start / Pause (finishes the current prompt first) / Stop / Retry failed / Reset / Clear
-- The queue is saved, so you can close the panel and resume later
+- **Batch processing**: queue any number of prompts. They run one after another, or several at once with **Concurrent Prompts**.
+- **Four modes**
+  - **Text Processing**: a text reply for every prompt.
+  - **Ingredients to Text**: your images or components are sent with each prompt, and the text replies are collected.
+  - **Text to Image**: images from text descriptions, with an optional aspect ratio.
+  - **Image to Image**: each prompt is sent with your source images to transform them.
+- **Auto-add character images**: name your files after characters (`hero.png`, `villain.jpg`). Each prompt gets the images whose names it mentions.
+- **Prompt options**
+  - *New Chat* or *Concat*: Concat continues the next prompt in the same chat.
+  - *New Image* or *Last Image*: Last Image uses the previous prompt's generated image as this prompt's input.
+  - Set the defaults in Settings, or click a prompt's tag in the queue to switch it.
+- **Smart delays**: a random wait between prompts, to stay clear of rate limits.
+- **Auto download**: text is saved as `.md` or `.txt`, images as files. They go to `Downloads/<Save to Folder>/001-<prompt>.png`. **Auto Change File Name** names the files after the prompt.
+- **Queue and progress**: a status bar and a list of every prompt, showing what it's doing now (*Sending → Replying → Drawing image → Completed*), with a link to its chat.
+- **Retries and recovery**
+  - Failed prompts are retried up to **Max Retries**.
+  - A prompt that ChatGPT refuses is retried once, then skipped.
+  - When ChatGPT asks a question instead of drawing, the extension asks it once to generate the image.
+  - A prompt that already reached the chat is never sent twice.
+- **Fix Error**: one click stops ChatGPT, closes dialogs, reloads the chat, and runs the stuck prompt again.
+- **Background mode**: shares the chatgpt.com tab so the browser keeps it running behind other windows. Nothing is recorded or sent anywhere.
+- **Six languages**: English, Tiếng Việt, 中文, 한국어, 日本語, Español.
 
-### 🗂️ One organized chat, auto-resume, refusal skip
-- **Keep everything in one chat** (on by default): every prompt of the queue goes into a single ChatGPT conversation, the *session chat*, instead of scattering images across many chats. The panel shows a link to it, and **New session chat** starts a fresh one. Clearing the queue also starts a fresh one.
-- **Auto-resume after interruptions**: if the ChatGPT tab is closed, reloaded, or moved to another chat, the network drops, or the side panel is closed mid-run, the extension goes back to the session chat and continues from the prompt where it stopped. If that prompt was already sent, it collects the reply instead of sending it again. Interruptions don't use up the prompt's normal retries.
-- **Refusal handling**: when ChatGPT declines to generate an image (content policy), the prompt is retried (**Retries when refused**, default 1) in the same chat. If it's refused again, it's marked **Refused** and the queue moves straight on to the next prompt. **Retry failed** also re-queues refused prompts.
-- **When ChatGPT asks instead of drawing** ("Would you like it in landscape or portrait?"), the extension answers once in the same chat ("Yes, please generate the image now, exactly as described.") and waits for the image, instead of sending the prompt again. The follow-up text is `CGA_IMAGE_NUDGE` in `content/selectors.js`.
-- **Slow images are never sent twice**: the extension waits for an image up to the **Timeout per prompt**. If ChatGPT is still drawing when time runs out, the next attempt picks that image up in the same chat.
+## How it knows a reply is finished
 
-### ✍️ Text mode
-- One text reply per prompt, saved as a Markdown file (prompt + response)
-- **Concat mode** keeps every prompt in one conversation so each builds on the previous reply, and saves a combined `concat-combined.md` at the end
+Earlier versions guessed from the page's markup: a Stop button, CSS classes, image addresses. When ChatGPT redesigned its page, those guesses broke, and the queue stalled after the first prompt. Version 2 doesn't depend on the markup for this.
 
-### 🖼️ Text → Image
-- Generate images from text descriptions; every generated image is downloaded
-- Aspect ratios: **16:9**, **9:16**, **1:1** (or leave it unspecified)
+1. A small script in the chatgpt.com page (`content/net-hook.js`) watches the request ChatGPT makes when a prompt is sent. The reply is done when the reply stream closes.
+2. The extension then reads the conversation from ChatGPT's own backend (`/backend-api/conversation/<id>`), using your logged-in session. From it, it checks that the reply to *this* prompt is final, takes the text, and downloads the generated images. If an image is still being drawn after the stream closed, it waits for it.
+3. The panel asks the ChatGPT tab how the prompt is going every 1.5 seconds. It doesn't rely on the page's own timers, which browsers slow down in background tabs. If the tab is reloaded or closed mid-reply, the panel notices within seconds. It goes back to that chat and collects the reply without sending the prompt again.
+4. If the conversation can't be read (for example, if ChatGPT changes its backend), the extension falls back to watching the page. The Activity log says which way each prompt finished: *(network)* or *(page)*.
 
-### 🎨 Image → Image
-- Upload source images, and each prompt is sent with an image to transform or enhance it. If you upload as many images as there are prompts, each prompt gets its own image; otherwise every image is sent with every prompt.
-- **Chain mode** uses the image generated by the previous prompt as the input for the next one
-
-### 🧩 Ingredients → Text
-- Upload reference images and batch-process them with prompts
-- **Auto-add by filename**: `alice.png` is attached only to prompts that mention "Alice". `bob_smith.jpg` matches "bob smith". Turn it off to attach every image to every prompt.
-
-### ⚙️ Automation controls
-- **Smart random delay** between prompts (configurable min/max seconds) to avoid rate limits
-- **Max retries** for prompts that fail (errors, rate-limit banners, timeouts, no image generated)
-- Timeout per prompt
-- Fast start: the first prompt reuses the open ChatGPT tab (or switches with ChatGPT's own "New chat", no page reload), and the activity log shows how long each prompt took to get the chat ready and to get a reply
-- One session chat for the whole queue (default), or turn it off to use a new chat for every prompt / a new chat when the run starts
-- Works with ChatGPT in any language, including the September 2026 page redesign. A prompt is never sent twice.
-- Keeps the ChatGPT tab in front and stops the browser from discarding it while the queue runs, so replies don't stall in a background tab
-- Stage-by-stage activity log, and **Copy diagnostics** for one-click bug reports
-
-### 📂 Auto download and file organization
-- Results are saved to `Downloads/ChatGPT-Automation/<project>/`
-- Files are auto-renamed from the prompt: `001-a-cozy-cabin-in-the-snow.png`, `002-…md`. Multiple images from one prompt get `-2`, `-3`, … suffixes
-- File names keep non-Latin letters (Vietnamese, Chinese, Japanese, Korean…)
-
-### 🌐 Languages
-English · Tiếng Việt · 中文 · 한국어 · 日本語 · Español. The panel starts in your browser's language, and you can switch at any time from the top-right menu.
-
-## Supported browsers
-
-| Browser | Version | Where the panel opens |
-|---|---|---|
-| Google Chrome | 116+ | Side panel |
-| Microsoft Edge | 116+ | Side panel |
-| Brave, Vivaldi | recent | Side panel |
-| Opera, Arc, other Chromium browsers | recent | Side panel when supported, otherwise its own small window |
-| Mozilla Firefox | 128+ | Sidebar |
-| Safari | — | Not supported (Apple requires converting and signing the extension with Xcode) |
-
-In every browser you can also right-click the toolbar button and choose **Open in a separate window**.
+The page is still used to type and send prompts, as a person would. Its selectors and button labels (in about 30 languages) live in [`content/selectors.js`](content/selectors.js).
 
 ## Install
 
 ### Chrome, Edge, Brave, Opera, Vivaldi, Arc
-1. Download or clone this repository. Or run `npm run build` and use `dist/chromium/` (or its zip).
+1. Download or clone this repository. Or use `dist/chromium/` or its zip (`npm run build` creates both).
 2. Open the extensions page: `chrome://extensions`, `edge://extensions`, `brave://extensions`, `opera://extensions` or `vivaldi:extensions`.
-3. Turn on **Developer mode** and click **Load unpacked**. Select the folder that contains `manifest.json`.
-4. Pin the extension and click its icon to open the panel.
+3. Turn on **Developer mode**, click **Load unpacked**, and select the folder that contains `manifest.json`.
+4. **Updating from 1.x:** click the reload icon on the extension card, then **reload any open chatgpt.com tabs** once.
+5. Pin the extension and click its icon to open the panel.
 
-### Firefox
-1. Run `npm run build` (or download the release zip) and use `dist/firefox/`.
-2. For a quick try: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and pick `dist/firefox/manifest.json`. Temporary add-ons are removed when Firefox restarts.
-3. For a permanent install, the zip has to be signed by Mozilla. Upload `dist/bash-auto-firefox-<version>.zip` at [addons.mozilla.org](https://addons.mozilla.org/developers/) (an *unlisted* add-on is enough), then install the signed `.xpi`.
-4. Click the toolbar button to open the sidebar. If Firefox asks for access to chatgpt.com on the first **Start**, allow it.
+### Firefox (128+)
+1. Run `npm run build` and use `dist/firefox/`.
+2. For a quick try: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…**, and pick `dist/firefox/manifest.json`.
+3. For a permanent install, the zip has to be signed by Mozilla. Upload `dist/bash-auto-firefox-<version>.zip` at [addons.mozilla.org](https://addons.mozilla.org/developers/) as an *unlisted* add-on, then install the signed `.xpi`.
+4. Allow access to chatgpt.com when asked on the first **Run**.
 
-## Usage
+## User guide
 
-1. Log in to [chatgpt.com](https://chatgpt.com) in a tab. If no ChatGPT tab is open, the extension opens one.
-2. Open the Side Panel, pick a **mode**, and set its options (aspect ratio, chain, reference images…).
-3. Paste your prompts and click **Add to queue**, or import a file.
-4. Optionally adjust **Settings** (delays, retries, project folder, file naming).
-5. Click **Start**. Keep the panel open while the queue runs. The extension brings the ChatGPT tab to the front of its window before each prompt, because browsers slow down background tabs. Don't minimize that window.
+1. Log in to [chatgpt.com](https://chatgpt.com) in a tab, then open the panel from the toolbar button.
+2. **Control** tab: pick a mode. Enter prompts with a blank line between them, or **upload a .txt file**. Upload images if the mode uses them.
+3. Set **Concurrent Prompts**, **Prompt Delay**, **Save to Folder** and **Auto Change File Name**.
+4. Click **Run**. Keep the panel open while it runs. If it closes, **Run** continues where it stopped.
 
-> Tip: Chrome may ask for permission to download multiple files the first time. Allow it for the extension.
+### Settings
+
+| Setting | What it does |
+| :--- | :--- |
+| Language | Panel language |
+| Default Mode | The mode the panel opens with |
+| Outputs per Prompt (Text / Image) | Runs each prompt 1–4 times (text) or 1–50 times (image); files get `-v2`, `-v3`… |
+| Concurrent Prompts | 1–6 prompts at once, each in its own chatgpt.com tab (Concat / Last Image prompts always run one at a time) |
+| Random Delay | Random wait (min–max seconds) between prompts |
+| Text Model / Image Model | Empty keeps ChatGPT's current model. Otherwise a model id as used in `chatgpt.com/?model=…`, e.g. `gpt-5` |
+| Default Prompt Mode Option | New Chat or Concat |
+| Default Image Mode Option | New Image or Last Image |
+| Max Input Images per Prompt | Ingredients 1–3, Image to Image 1–10 |
+| Max Retries on Failure | 1–20 |
+| Timeout per Prompt | Minutes to wait for one reply |
+| Auto Download (Text) / Quality (Image) | No Download, Markdown or plain text / No Download or the original image |
+| Keep the ChatGPT tab in front | With one prompt at a time, brings the tab to the front before each prompt |
+
+## Troubleshooting
+
+| Problem | What to do |
+| :--- | :--- |
+| A prompt stays on *Running* | Look at the Activity log. While a prompt runs, a *page check* line every minute says what it's waiting on: whether the page hook is loaded (`hook ✓`), whether the reply stream is open or closed, and whether the conversation shows the reply as final. Click **Fix Error** to recover, and **Copy diagnostics** for a bug report (it has no prompt or reply text). |
+| `hook ✗` in the log | Reload the chatgpt.com tab once, for example after installing or updating the extension. |
+| Prompts stall while you use other windows | Click **Enable background mode** and pick the chatgpt.com tab, or keep that tab visible. |
+| "ChatGPT page is not ready" | Log in to chatgpt.com in that tab, and make sure no dialog covers the prompt box. |
+| Downloads ask where to save | Turn off "Ask where to save each file before downloading" in the browser's settings. |
+| Firefox: nothing happens on Run | Allow access to chatgpt.com, under *about:addons → ChatGPT Automation → Permissions*. |
 
 ## Project structure
 
@@ -99,58 +101,32 @@ In every browser you can also right-click the toolbar button and choose **Open i
 manifest.json          MV3 manifest for Chromium browsers (Firefox's is generated by the build)
 background.js          Opens the panel: side panel, Firefox sidebar, or a separate window
 content/
-  selectors.js         Every chatgpt.com DOM selector, all in one place
-  driver.js            Types the prompt, attaches files, sends, waits, extracts text/images, diagnostics
+  sse.js               Reads ChatGPT's reply stream (page world)
+  net-hook.js          Watches the prompt requests, reads conversations and images (page world)
+  conversation.js      Is the reply final? Its text and images, from the conversation JSON
+  agent.js             Types and sends prompts, follows each one until done, page fallback
+  selectors.js         chatgpt.com selectors, button labels, error/refusal phrases
 sidepanel/
-  index.html, panel.css
-  app.js               UI, settings, queue editing, persistence
-  runner.js            Queue engine: tabs, retries, delays, downloads
-  modes.js             Per-mode request building (aspect ratio, chain, ingredients)
+  index.html, panel.css, app.js   Control and Setting tabs
+  engine.js            Queue engine: concurrent tabs, polling, retries, delays, downloads
+  modes.js             What each mode sends (images, aspect ratio, Last Image)
   i18n.js              Runtime language switching
-lib/utils.js           Pure helpers (prompt parsing, delays, slugs, file names, matching)
-lib/browser.js         `browser` / `chrome` API namespace, browser detection
+lib/                   Pure helpers, browser API namespace
 scripts/build.mjs      Packages dist/chromium and dist/firefox (+ zips)
-_locales/<lang>/       Translations (en, vi, zh_CN, ko, ja, es)
-icons/                 Extension icons
-tests/                 Unit tests, static checks, Playwright end-to-end test + mock ChatGPT page
-                       (old and 2026 page layouts)
+_locales/<lang>/       Translations
+tests/                 Unit tests, static checks, Playwright end-to-end tests with a fake ChatGPT
 ```
-
-### When ChatGPT changes its UI
-ChatGPT's page structure changes from time to time. In September 2026, for example, it dropped the test ids and role markers that automation tools relied on, which made earlier versions of this extension stop after the first prompt. The driver is built to survive changes like that:
-
-- **Buttons** are recognized by test id, then by label in about 30 languages (`CGA_LABELS`), then by icon (Stop is a square) or type (Send is the form's submit button). A Stop button is never clicked as Send.
-- **Replies** are found by position: everything after the turn that shows the prompt. Role markers are used when present but aren't needed.
-- **Completion** means the Stop button is gone, the reply has stopped changing, and the copy/action bar is showing. When none of those can be seen, a long quiet period counts instead. If nothing happens for 3 minutes, the prompt is retried.
-- **Duplicates.** A prompt that already reached the chat is never sent again. After an interruption, the extension collects its reply instead.
-
-Everything page-specific lives in [`content/selectors.js`](content/selectors.js): selectors, button labels (`CGA_LABELS`), error phrases (`CGA_ERROR_PATTERNS`) and refusal phrases (`CGA_REFUSAL_PATTERNS`), and the image follow-up (`CGA_IMAGE_NUDGE`). Updating that file is usually all it takes. **Copy diagnostics** (in the Activity log) shows exactly which parts of the page the driver can and can't see.
-
-## Troubleshooting
-
-- **The queue stops after the first prompt, or a prompt stays on Running after ChatGPT finished.** Update to 1.1.2 or later. If it still happens, open the Activity log. It shows each stage ("sent, waiting for the reply…"), and a *Page check* line every minute while a prompt runs and after any failure. That line says what the extension is waiting on (for example `generating ✓ (stop "…")` or `images 0/0`). Click **Copy diagnostics** and include the result, plus the *Page check* lines, in your bug report.
-- **Replies stall while you work in other tabs or windows.** Leave **Keep the ChatGPT tab in front while running** on (the default) and don't minimize the ChatGPT window. In Chrome you can also add `chatgpt.com` under *Settings → Performance → Always keep these sites active*.
-- **"ChatGPT page is not ready".** Log in to chatgpt.com in that tab, and make sure there's no dialog covering the prompt box.
-- **Firefox: nothing happens on Start.** Allow access to chatgpt.com when asked, or under *about:addons → ChatGPT Automation → Permissions*.
-- **Two panels open.** Only one panel can run the queue at a time. The second one reports that another panel is already running it.
 
 ## Development
 
-Chromium browsers load the repository folder straight from source. `npm run build` packages it per browser.
-
 ```bash
-npm test            # unit tests (node:test) for helpers, mode logic, Firefox manifest
-npm run check       # manifest/locale validation (incl. the Firefox manifest), missing translation keys
-npm run test:e2e    # Playwright: driver vs. a mock ChatGPT page in both its old and 2026 layouts,
-                    # and the real extension running queues against chatgpt.com routed to that mock
+npm test            # unit tests: stream parser, conversation reader, helpers, modes
+npm run check       # manifest/locale validation, missing translation keys
+npm run test:e2e    # Playwright: the content scripts and the real extension against a fake chatgpt.com
 npm run build       # dist/chromium, dist/firefox and their .zip files
 ```
 
-To lint the Firefox package: `npx web-ext lint --source-dir dist/firefox`.
-
-`test:e2e` needs Playwright with Chromium (`npm i -D playwright && npx playwright install chromium`), or set `CHROMIUM_PATH` to an existing Chromium binary.
-
-To add a language, copy `_locales/en/messages.json` to `_locales/<code>/`, translate it, and add the code to `LANGUAGES` in `sidepanel/i18n.js`. `npm run check` reports any missing keys.
+`test:e2e` needs Playwright with Chromium, or `CHROMIUM_PATH` set to a Chromium binary.
 
 ## Disclaimer
 

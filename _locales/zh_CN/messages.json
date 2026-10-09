@@ -8,38 +8,74 @@
   "appTitle": {
     "message": "ChatGPT Automation"
   },
+  "openInWindow": {
+    "message": "在单独窗口中打开"
+  },
+  "tabControl": {
+    "message": "控制"
+  },
+  "tabSetting": {
+    "message": "设置"
+  },
   "modeHeading": {
     "message": "模式"
   },
-  "modeText": {
+  "mode_text": {
+    "message": "文本处理"
+  },
+  "mode_ingredients": {
+    "message": "素材转文本"
+  },
+  "mode_textToImage": {
+    "message": "文本生成图片"
+  },
+  "mode_imageToImage": {
+    "message": "图片生成图片"
+  },
+  "modeShort_text": {
     "message": "文本"
   },
-  "modeTextToImage": {
+  "modeShort_ingredients": {
+    "message": "素材"
+  },
+  "modeShort_textToImage": {
     "message": "文本 → 图片"
   },
-  "modeImageToImage": {
+  "modeShort_imageToImage": {
     "message": "图片 → 图片"
   },
-  "modeIngredients": {
-    "message": "素材 → 文本"
-  },
   "modeHint_text": {
-    "message": "为队列中的每个提示词生成文本回复。"
-  },
-  "modeHint_textToImage": {
-    "message": "根据文字描述生成图片，所有生成的图片都会被下载。"
-  },
-  "modeHint_imageToImage": {
-    "message": "每个提示词都会附带一张源图片，用于转换或增强图片。"
+    "message": "为每个提示词生成文本回复。"
   },
   "modeHint_ingredients": {
-    "message": "每个提示词都会附带参考图片，并收集文本回复。"
+    "message": "每个提示词都会附带你的图片，并收集文本回复。"
   },
-  "concatLabel": {
-    "message": "串联模式（Concat）"
+  "modeHint_textToImage": {
+    "message": "根据文字描述生成图片，所有生成的图片都会下载。"
   },
-  "concatHint": {
-    "message": "所有提示词保留在同一个对话中，每条都基于上一条回复继续。结束时保存一个合并文件。"
+  "modeHint_imageToImage": {
+    "message": "每个提示词都会附带源图片进行转换。"
+  },
+  "uploadImages": {
+    "message": "上传图片"
+  },
+  "ingredientImages": {
+    "message": "图片 / 素材"
+  },
+  "sourceImages": {
+    "message": "源图片"
+  },
+  "clear": {
+    "message": "清除"
+  },
+  "remove": {
+    "message": "移除"
+  },
+  "autoAddCharacters": {
+    "message": "自动添加角色图片"
+  },
+  "autoAddCharactersHint": {
+    "message": "附加文件名出现在提示词中的图片：hero.png 会附加到提到 \"hero\" 的提示词。"
   },
   "aspectRatio": {
     "message": "宽高比"
@@ -47,110 +83,74 @@
   "aspectNone": {
     "message": "不指定"
   },
-  "saveTextWithImages": {
-    "message": "同时保存文本回复"
-  },
-  "chainLabel": {
-    "message": "链式模式（Chain）"
-  },
-  "chainHint": {
-    "message": "将上一个提示词生成的图片作为下一个提示词的输入。"
-  },
-  "sourceImages": {
-    "message": "源图片"
-  },
-  "addImages": {
-    "message": "添加图片"
-  },
-  "clear": {
-    "message": "清除"
-  },
-  "autoMatchLabel": {
-    "message": "按文件名自动添加图片"
-  },
-  "autoMatchHint": {
-    "message": "仅附加文件名出现在提示词中的图片（例如提示词提到 Alice 时附加 \"alice.png\"）。关闭 = 附加全部。"
-  },
-  "referenceImages": {
-    "message": "参考图片"
-  },
   "promptsHeading": {
     "message": "提示词"
   },
   "promptsPlaceholder": {
-    "message": "每行一个提示词…\n\n或用空行分隔多行提示词。"
+    "message": "输入提示词，每个提示词之间用空行分隔。"
   },
-  "promptsHint": {
-    "message": "每行一个提示词。如果文本包含空行，则每个段落为一个提示词。"
+  "uploadTxt": {
+    "message": "或上传 .txt 文件"
   },
-  "addToQueue": {
-    "message": "加入队列"
+  "promptCount": {
+    "message": "{0} 个提示词"
   },
-  "importFile": {
-    "message": "导入 .txt / .csv"
+  "concurrency": {
+    "message": "并发提示词"
   },
-  "settingsHeading": {
-    "message": "设置"
+  "promptDelay": {
+    "message": "提示词间隔（秒）"
   },
-  "minDelay": {
-    "message": "最小延迟（秒）"
+  "randomDelay": {
+    "message": "随机延迟（秒）"
   },
-  "maxDelay": {
-    "message": "最大延迟（秒）"
+  "saveToFolder": {
+    "message": "保存到文件夹"
   },
-  "maxRetries": {
-    "message": "最大重试次数"
+  "autoRename": {
+    "message": "自动重命名文件"
   },
-  "timeoutMinutes": {
-    "message": "每个提示词超时（分钟）"
+  "run": {
+    "message": "运行"
   },
-  "newChatPerPrompt": {
-    "message": "每个提示词新建对话"
+  "stop": {
+    "message": "停止"
   },
-  "newChatOnStart": {
-    "message": "开始运行时新建对话"
+  "fixError": {
+    "message": "修复错误"
   },
-  "autoDownload": {
-    "message": "自动下载结果"
+  "enableBackground": {
+    "message": "启用后台模式"
   },
-  "projectFolder": {
-    "message": "项目文件夹"
+  "runningInBackground": {
+    "message": "后台运行中"
   },
-  "renameByPrompt": {
-    "message": "按提示词命名文件"
+  "backgroundHint": {
+    "message": "标签页被隐藏时，浏览器会暂停 chatgpt.com。后台模式会共享 chatgpt.com 标签页（在对话框中选择它），使其在其他窗口后面继续运行。不会录制或发送任何内容。"
   },
   "queueHeading": {
     "message": "队列"
   },
-  "start": {
-    "message": "开始"
-  },
-  "resume": {
-    "message": "继续"
-  },
-  "pause": {
-    "message": "暂停"
-  },
-  "stop": {
-    "message": "停止"
+  "countsLine": {
+    "message": "已完成 {0}/{1} · 失败 {2} · 被拒 {3}"
   },
   "retryFailed": {
     "message": "重试失败项"
   },
   "resetAll": {
-    "message": "全部重置"
+    "message": "全部重新运行"
   },
   "clearQueue": {
     "message": "清空队列"
   },
-  "keepPanelOpen": {
-    "message": "队列运行期间请保持此面板打开，并确保已登录 chatgpt.com。"
+  "confirmClearAgain": {
+    "message": "再次点击以清空"
   },
   "queueEmpty": {
-    "message": "还没有提示词，请在上方添加。"
+    "message": "还没有提示词。"
   },
-  "logHeading": {
-    "message": "活动日志"
+  "keepPanelOpen": {
+    "message": "队列运行时请保持此面板打开。如果关闭了，点击运行会从停止处继续。"
   },
   "openChat": {
     "message": "打开对话"
@@ -158,8 +158,14 @@
   "rerun": {
     "message": "重新运行"
   },
-  "remove": {
-    "message": "移除"
+  "optionToggleHint": {
+    "message": "点击切换"
+  },
+  "retriesCount": {
+    "message": "重试 {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} 张图片"
   },
   "status_queued": {
     "message": "排队中"
@@ -173,26 +179,116 @@
   "status_failed": {
     "message": "失败"
   },
-  "retriesCount": {
-    "message": "重试 {0}/{1}"
+  "status_refused": {
+    "message": "被拒绝"
   },
-  "imagesCount": {
-    "message": "{0} 张图片"
+  "phase_starting": {
+    "message": "正在打开对话"
   },
-  "countsLine": {
-    "message": "已完成 {0}/{1} · 运行中 {2} · 排队 {3} · 失败 {4} · 被拒绝 {5} · {6}%"
+  "phase_typing": {
+    "message": "发送中"
   },
-  "runnerIdle": {
-    "message": "空闲"
+  "phase_sent": {
+    "message": "已发送"
   },
-  "runnerRunning": {
-    "message": "运行中…"
+  "phase_replying": {
+    "message": "回复中"
   },
-  "runnerPausing": {
-    "message": "本条完成后暂停…"
+  "phase_image": {
+    "message": "正在生成图片"
   },
-  "runnerWaiting": {
-    "message": "{0} 秒后运行下一条"
+  "phase_nudged": {
+    "message": "已请求生成图片"
+  },
+  "logHeading": {
+    "message": "活动日志"
+  },
+  "copyDiagnostics": {
+    "message": "复制诊断信息"
+  },
+  "copyDiagnosticsHint": {
+    "message": "复制扩展在 ChatGPT 页面上看到的状态（不含提示词或回复内容），可粘贴到错误报告中。"
+  },
+  "language": {
+    "message": "语言"
+  },
+  "defaultMode": {
+    "message": "默认模式"
+  },
+  "textOutputs": {
+    "message": "每个提示词的输出数（文本）"
+  },
+  "imageOutputs": {
+    "message": "每个提示词的输出数（图片）"
+  },
+  "textModel": {
+    "message": "文本模型"
+  },
+  "imageModel": {
+    "message": "图片模型"
+  },
+  "modelDefault": {
+    "message": "ChatGPT 当前模型"
+  },
+  "modelHint": {
+    "message": "留空则使用 ChatGPT 中已选的模型。否则填写 chatgpt.com/?model=… 中的模型 ID（如 gpt-5）。"
+  },
+  "defaultPromptMode": {
+    "message": "默认提示词模式"
+  },
+  "defaultImageMode": {
+    "message": "默认图片模式"
+  },
+  "chatMode_new": {
+    "message": "新对话"
+  },
+  "chatMode_concat": {
+    "message": "连续"
+  },
+  "imageMode_new": {
+    "message": "新图片"
+  },
+  "imageMode_last": {
+    "message": "上一张图片"
+  },
+  "promptModeHint": {
+    "message": "连续：下一个提示词在同一对话中继续。上一张图片：上一个提示词生成的图片作为本提示词的输入。点击队列中提示词的标签可切换。"
+  },
+  "maxIngredientImages": {
+    "message": "每个提示词最多图片数（素材）"
+  },
+  "maxImageInputs": {
+    "message": "每个提示词最多图片数（图生图）"
+  },
+  "maxRetries": {
+    "message": "失败最大重试次数"
+  },
+  "timeoutMinutes": {
+    "message": "每个提示词超时（分钟）"
+  },
+  "textDownload": {
+    "message": "自动下载（文本）"
+  },
+  "imageDownload": {
+    "message": "自动下载质量（图片）"
+  },
+  "noDownload": {
+    "message": "不下载"
+  },
+  "downloadMd": {
+    "message": "Markdown (.md)"
+  },
+  "downloadTxt": {
+    "message": "纯文本 (.txt)"
+  },
+  "downloadOriginal": {
+    "message": "原图 (1k)"
+  },
+  "keepTabActive": {
+    "message": "运行时保持 ChatGPT 标签页在前台"
+  },
+  "keepTabActiveHint": {
+    "message": "一次运行一个提示词时，每个提示词前都会把 ChatGPT 标签页切到窗口前台。"
   },
   "samplePrompt": {
     "message": "雪中温馨的小木屋"
@@ -200,32 +296,107 @@
   "downloadsFolder": {
     "message": "下载"
   },
-  "confirmClear": {
-    "message": "确定要清空队列中的所有提示词吗？"
+  "runnerIdle": {
+    "message": "空闲"
+  },
+  "runnerRunning": {
+    "message": "运行中（{0}）"
+  },
+  "runnerWaiting": {
+    "message": "{0} 秒后继续"
+  },
+  "runnerStopping": {
+    "message": "正在停止…"
+  },
+  "logAdded": {
+    "message": "已添加 {0} 个提示词（队列中 {1} 项）"
+  },
+  "logNoPrompts": {
+    "message": "请先输入至少一个提示词。"
+  },
+  "logNeedSourceImages": {
+    "message": "图生图至少需要一张源图片，请先上传。"
+  },
+  "logNeedHostAccess": {
+    "message": "请允许访问 chatgpt.com 以运行队列。"
   },
   "logStarted": {
-    "message": "队列已开始。"
+    "message": "队列已开始"
+  },
+  "logAlreadyRunning": {
+    "message": "队列已在另一个面板中运行。"
+  },
+  "logFatal": {
+    "message": "因错误停止：{0}"
   },
   "logFinished": {
-    "message": "队列已完成。"
-  },
-  "logPausing": {
-    "message": "将在当前提示词完成后暂停。"
+    "message": "队列已完成"
   },
   "logStopped": {
-    "message": "已停止。"
+    "message": "已停止。点击运行可继续。"
+  },
+  "logFixing": {
+    "message": "修复错误：停止 ChatGPT、关闭对话框并重新加载对话"
+  },
+  "logFixed": {
+    "message": "提示词 {0} 将重新运行"
+  },
+  "logSequential": {
+    "message": "连续 / 上一张图片模式的提示词会逐个运行。"
+  },
+  "logOpenedTabs": {
+    "message": "已额外打开 {0} 个 ChatGPT 标签页"
   },
   "logRunning": {
-    "message": "正在运行提示词 #{0}…"
+    "message": "提示词 {0}：开始"
+  },
+  "logSent": {
+    "message": "提示词 {0}：已发送，等待回复"
+  },
+  "logWaitingForImage": {
+    "message": "提示词 {0}：ChatGPT 正在生成图片"
+  },
+  "logNudged": {
+    "message": "提示词 {0}：ChatGPT 没有生成图片，已请求它生成"
+  },
+  "logNote": {
+    "message": "提示词 {0}：{1}"
+  },
+  "logPageCheck": {
+    "message": "提示词 {0}：页面检查 — {1}"
+  },
+  "logResumed": {
+    "message": "提示词 {0}：中断前已发送，直接收集回复，未重复发送"
   },
   "logCompleted": {
-    "message": "提示词 #{0} 已完成。"
+    "message": "提示词 {0}：{1} 秒完成（{2}）"
+  },
+  "logRefused": {
+    "message": "提示词 {0}：被 ChatGPT 拒绝 — 再试一次"
+  },
+  "logRefusedSkip": {
+    "message": "提示词 {0}：被 ChatGPT 拒绝 — 已跳过"
   },
   "logRetrying": {
-    "message": "提示词 #{0} 失败：{1} — 将重试（{2}/{3}）。"
+    "message": "提示词 {0}：{1} — 重试 {2}/{3}"
+  },
+  "logInterrupted": {
+    "message": "提示词 {0}：{1} — 下次尝试会直接收集它的回复"
   },
   "logFailed": {
-    "message": "提示词 #{0} 失败：{1} — 已尝试 {2} 次，放弃。"
+    "message": "提示词 {0}：失败 — {1}（重试 {2}/{3}）"
+  },
+  "logDiagnostics": {
+    "message": "页面：{0}"
+  },
+  "logReturningToChat": {
+    "message": "正在返回该提示词所在的对话"
+  },
+  "logTabActivated": {
+    "message": "已将 ChatGPT 标签页切到前台"
+  },
+  "logTabHidden": {
+    "message": "ChatGPT 标签页处于隐藏状态。如果提示词卡住，请启用后台模式或保持标签页可见。"
   },
   "logDownloaded": {
     "message": "已保存 {0}"
@@ -233,100 +404,16 @@
   "logDownloadFailed": {
     "message": "无法保存 {0}：{1}"
   },
-  "logFatal": {
-    "message": "运行已停止：{0}"
+  "logBackgroundOn": {
+    "message": "后台模式已开启"
   },
-  "logAdded": {
-    "message": "已将 {0} 个提示词加入队列。"
+  "logBackgroundOff": {
+    "message": "后台模式已关闭"
   },
-  "logNoPrompts": {
-    "message": "未找到提示词。"
-  },
-  "singleChat": {
-    "message": "所有内容保留在同一个对话中"
-  },
-  "singleChatHint": {
-    "message": "队列中的所有提示词都进入同一个 ChatGPT 对话。如果运行中断，扩展会回到该对话并从停止处继续。"
-  },
-  "refusalRetries": {
-    "message": "被拒绝时的重试次数"
-  },
-  "sessionChat": {
-    "message": "会话对话："
-  },
-  "sessionNone": {
-    "message": "从第一个提示词开始"
-  },
-  "newSessionChat": {
-    "message": "新建会话对话"
-  },
-  "status_refused": {
-    "message": "被拒绝"
-  },
-  "logRefused": {
-    "message": "提示词 #{0} 被 ChatGPT 拒绝 — 正在重试（{1}/{2}）。"
-  },
-  "logRefusedSkip": {
-    "message": "提示词 #{0} 被 ChatGPT 拒绝 — 已跳过，继续下一个提示词。"
-  },
-  "logResumed": {
-    "message": "提示词 #{0} 在中断前已发送 — 已直接获取回复，未重复发送。"
-  },
-  "logSessionLost": {
-    "message": "无法打开会话对话 — 将在新对话中继续。"
-  },
-  "logReturningToChat": {
-    "message": "正在返回会话对话…"
-  },
-  "logNewSession": {
-    "message": "下次运行将开始新的会话对话。"
-  },
-  "logTimings": {
-    "message": "提示词 #{0}：对话准备用时 {1} 秒，回复用时 {2} 秒。"
-  },
-  "keepTabActive": {
-    "message": "运行时保持 ChatGPT 标签页在前台"
-  },
-  "keepTabActiveHint": {
-    "message": "浏览器会降低后台标签页的速度，可能导致 ChatGPT 回复卡住。每个提示词发送前会把该标签页切到所在窗口的前台（不会抢走焦点）。"
-  },
-  "copyDiagnostics": {
-    "message": "复制诊断信息"
-  },
-  "copyDiagnosticsHint": {
-    "message": "遇到问题？打开 ChatGPT，点击“复制诊断信息”，然后把结果粘贴到问题反馈中。"
-  },
-  "openInWindow": {
-    "message": "在单独窗口中打开"
-  },
-  "logSent": {
-    "message": "提示词 #{0}：已发送，正在等待回复…"
-  },
-  "logWaitingForImage": {
-    "message": "提示词 #{0}：正在等待图片…"
-  },
-  "logTabHidden": {
-    "message": "ChatGPT 标签页处于隐藏状态（窗口被最小化了？）。请保持其窗口可见，否则回复可能会卡住。"
-  },
-  "logTabActivated": {
-    "message": "已将 ChatGPT 标签页切到前台。"
-  },
-  "logAlreadyRunning": {
-    "message": "另一个面板正在运行队列。请使用那个面板，或先将其停止。"
-  },
-  "logNeedHostAccess": {
-    "message": "扩展需要访问 chatgpt.com 的权限才能运行。请再次点击“开始”并允许。"
-  },
-  "logDiagnostics": {
-    "message": "页面检查：{0}"
+  "logBackgroundFailed": {
+    "message": "后台模式未启动：{0}。可尝试在单独窗口中打开面板（右键点击工具栏按钮）。"
   },
   "logDiagnosticsCopied": {
-    "message": "诊断信息已复制到剪贴板。请粘贴到问题反馈中。"
-  },
-  "confirmClearAgain": {
-    "message": "再次点击以清空"
-  },
-  "logNudged": {
-    "message": "提示词 #{0}：ChatGPT 回复中没有图片 — 已提醒一次立即生成图片。"
+    "message": "诊断信息已复制到剪贴板"
   }
 }

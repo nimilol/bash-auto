@@ -50,14 +50,17 @@ for (const k of ['extName', 'extDescription']) if (!en[k]) errors.push(`manifest
 if (en.extDescription.message.length > 132) errors.push('extDescription longer than 132 chars');
 
 const html = read('sidepanel/index.html');
-const js = [...['app.js', 'runner.js'].map((f) => read(`sidepanel/${f}`)), read('background.js')].join('\n');
+const js = [...['app.js', 'engine.js'].map((f) => read(`sidepanel/${f}`)), read('background.js')].join('\n');
 const used = new Set([
   ...[...html.matchAll(/data-i18n(?:-placeholder|-title)?="([^"]+)"/g)].map((m) => m[1]),
   ...[...js.matchAll(/\bt\('([A-Za-z_]+)'/g)].map((m) => m[1]),
   ...[...js.matchAll(/'(log[A-Z][A-Za-z]+)'/g)].map((m) => m[1]),
   ...[...js.matchAll(/getMessage\('([A-Za-z_]+)'/g)].map((m) => m[1]),
-  ...['text', 'textToImage', 'imageToImage', 'ingredients'].map((m) => `modeHint_${m}`),
+  ...['text', 'textToImage', 'imageToImage', 'ingredients'].flatMap((m) => [`modeHint_${m}`, `modeShort_${m}`]),
   ...['queued', 'running', 'completed', 'failed', 'refused'].map((s) => `status_${s}`),
+  ...['starting', 'typing', 'sent', 'replying', 'image', 'nudged'].map((s) => `phase_${s}`),
+  ...['new', 'concat'].map((s) => `chatMode_${s}`),
+  ...['new', 'last'].map((s) => `imageMode_${s}`),
 ]);
 for (const k of used) if (!en[k]) errors.push(`i18n key used but not defined: ${k}`);
 

@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.0.0 — 2026-10-09
+
+Rebuilt from scratch, following the
+[ChatGPT Automation user guide](https://github.com/trgkyle/chatgpt-automation-user-guide).
+
+### Fixed
+- **The queue no longer depends on ChatGPT's page markup to know a reply is finished.** Versions
+  1.x guessed from the page: a Stop button, CSS classes, image addresses. Whenever ChatGPT changed
+  its page, a guess missed, the first prompt never counted as done, and the queue stalled. Now:
+  - A script in the chatgpt.com page watches the request that sends each prompt. The reply is
+    done when its stream closes.
+  - The reply's text and images are read from ChatGPT's own conversation data. An image that is
+    still being drawn after the stream closed is waited for.
+  - The panel checks on each prompt every 1.5 seconds, instead of one long wait that could break
+    silently. A hidden ChatGPT tab no longer slows the checks down.
+  - Only when the conversation can't be read does the extension fall back to watching the page.
+
+### Added
+- **Control** and **Setting** tabs, as described in the guide.
+- Four modes: Text Processing, Ingredients to Text, Text to Image, Image to Image.
+- **Concurrent Prompts** (1–6), each running in its own ChatGPT tab.
+- Per-prompt options **New Chat / Concat** and **New Image / Last Image**, with defaults in Settings.
+- **Outputs per Prompt** for text (1–4) and images (1–50).
+- **Text Model / Image Model**, using `?model=`.
+- **Max Input Images per Prompt**.
+- **Auto Download** choices for text (Markdown or plain text) and images.
+- **Fix Error** stops ChatGPT, closes dialogs, reloads the chat, and runs the stuck prompt again.
+- **Background mode** shares the chatgpt.com tab so the browser doesn't pause it.
+- **Auto-add character images** in Ingredients and Image to Image.
+- **Stop** leaves ChatGPT's reply running. **Run** then collects it instead of sending the prompt
+  again, as it does after the panel closes or the tab reloads mid-reply.
+- The Activity log says how each prompt finished: *(network)* or *(page)*. While a prompt runs, a
+  *page check* line every minute shows whether the page hook is loaded, whether the reply stream
+  is open, and whether the conversation shows the reply as final.
+
+### Changed
+- Files are saved to `Downloads/<Save to Folder>/`. The default folder is `ChatGPT-Automation`.
+- "Keep everything in one chat" is replaced by the guide's per-prompt New Chat / Concat option.
+  New Chat is the default.
+- Pause is removed. Stop followed by Run continues where the queue stopped.
+
 ## 1.1.2 — 2026-10-09
 
 ### Fixed

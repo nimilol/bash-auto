@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildFilename, matchIngredientsByFilename, parseCsvPrompts, parsePrompts,
-  randomDelay, slugify, summarize, withAspectRatio,
+  itemLabel, randomDelay, slugify, summarize, withAspectRatio,
 } from '../lib/utils.js';
-import { buildRequest, wantsNewChat } from '../sidepanel/modes.js';
-import { conversationId, wasInterrupted } from '../sidepanel/runner.js';
+import { buildRequest, makeItems, startsNewChat } from '../sidepanel/modes.js';
+import { conversationId, extFromUrl, wasInterrupted } from '../sidepanel/engine.js';
 import { browserName } from '../lib/browser.js';
 import { firefoxManifest } from '../scripts/build.mjs';
 import { readFileSync } from 'node:fs';
@@ -47,15 +47,15 @@ test('slugify keeps unicode letters and strips unsafe chars', () => {
 });
 
 test('buildFilename', () => {
-  assert.equal(
-    buildFilename({ project: 'My/Proj', index: 0, prompt: 'Hello World', ext: 'png' }),
-    'ChatGPT-Automation/My Proj/001-hello-world.png',
-  );
-  assert.equal(
-    buildFilename({ project: '', index: 11, prompt: 'x', ext: '.md', part: 1, renameByPrompt: false }),
-    'ChatGPT-Automation/default/012-2.md',
-  );
-  assert.equal(buildFilename({ project: 'p', index: 2, prompt: 'x', ext: 'png', part: 0 }), 'ChatGPT-Automation/p/003-x.png');
+  assert.equal(buildFilename({ folder: 'My/Proj', index: 0, prompt: 'Hello World', ext: 'png' }), 'My Proj/001-hello-world.png');
+  assert.equal(buildFilename({ folder: '', index: 11, prompt: 'x', ext: '.md', part: 1, rename: false }), 'ChatGPT-Automation/012-2.md');
+  assert.equal(buildFilename({ folder: 'p', index: 2, prompt: 'x', ext: 'png', part: 0 }), 'p/003-x.png');
+  assert.equal(buildFilename({ folder: 'p', index: 2, prompt: 'x', ext: 'png', copy: 1, part: 2 }), 'p/003-x-v2-3.png');
+});
+
+test('itemLabel', () => {
+  assert.equal(itemLabel({ index: 2 }), '#3');
+  assert.equal(itemLabel({ index: 2, copy: 1, copies: 4 }), '#3 (2/4)');
 });
 
 test('matchIngredientsByFilename', () => {
@@ -85,46 +85,52 @@ test('summarize', () => {
 test('buildRequest per mode', () => {
   const assets = {
     sourceImages: [{ name: 's1.png', dataUrl: 'd1' }, { name: 's2.png', dataUrl: 'd2' }],
-    ingredients: [{ name: 'alice.png', dataUrl: 'a' }, { name: 'bob.png', dataUrl: 'b' }],
+    ingredients: [{ name: 'alice.png', dataUrl: 'a' }, { name: 'bob.png', dataUrl: 'b' }, { name: 'c.png', dataUrl: 'c' }, { name: 'd.png', dataUrl: 'd' }],
   };
-  const item = { prompt: 'Alice waves', index: 1 };
+  const item = (mode, extra = {}) => ({ prompt: 'Alice waves', index: 1, mode, ...extra });
 
-  const text = buildRequest(item, { mode: 'text' }, assets);
-  assert.deepEqual(text, { prompt: 'Alice waves', files: [], expectImages: false });
+  assert.deepEqual(buildRequest(item('text'), {}, assets), { prompt: 'Alice waves', files: [], expectImages: false });
 
-  const t2i = buildRequest(item, { mode: 'textToImage', aspectRatio: '9:16' }, assets);
+  const t2i = buildRequest(item('textToImage'), { aspectRatio: '9:16' }, assets);
   assert.ok(t2i.expectImages);
   assert.match(t2i.prompt, /9:16/);
+  assert.deepEqual(t2i.files, []);
+  const t2iLast = buildRequest(item('textToImage', { imageMode: 'last' }), {}, assets, { previousImage: { name: 'prev.png', dataUrl: 'p' } });
+  assert.deepEqual(t2iLast.files.map((f) => f.name), ['prev.png']);
 
-  const i2i = buildRequest(item, { mode: 'imageToImage', queueLength: 2 }, assets);
-  assert.deepEqual(i2i.files.map((f) => f.name), ['s2.png']); // one source per prompt
-  const i2iAll = buildRequest(item, { mode: 'imageToImage', queueLength: 5 }, assets);
-  assert.equal(i2iAll.files.length, 2);
-  const chained = buildRequest(item, { mode: 'imageToImage', chain: true }, assets, { previousImage: { name: 'prev.png', dataUrl: 'p' } });
+  const i2i = buildRequest(item('imageToImage'), {}, assets, { promptCount: 2 });
+  assert.deepEqual(i2i.files.map((f) => f.name), ['s2.png'], 'one source per prompt when counts match');
+  assert.equal(buildRequest(item('imageToImage'), {}, assets, { promptCount: 5 }).files.length, 2);
+  assert.equal(buildRequest(item('imageToImage'), { maxImageInputs: 1 }, assets, { promptCount: 5 }).files.length, 1);
+  const byName = buildRequest({ ...item('imageToImage'), prompt: 'S1 at the beach' }, { autoAddCharacters: true }, assets, { promptCount: 5 });
+  assert.deepEqual(byName.files.map((f) => f.name), ['s1.png'], 'matched by file name');
+  const chained = buildRequest(item('imageToImage', { imageMode: 'last' }), {}, assets, { previousImage: { name: 'prev.png', dataUrl: 'p' } });
   assert.deepEqual(chained.files.map((f) => f.name), ['prev.png']);
-  assert.throws(() => buildRequest(item, { mode: 'imageToImage' }, { sourceImages: [] }));
+  assert.throws(() => buildRequest(item('imageToImage'), {}, { sourceImages: [] }));
 
-  const ing = buildRequest(item, { mode: 'ingredients', autoMatchIngredients: true }, assets);
-  assert.deepEqual(ing.files.map((f) => f.name), ['alice.png']);
-  const ingAll = buildRequest(item, { mode: 'ingredients', autoMatchIngredients: false }, assets);
-  assert.equal(ingAll.files.length, 2);
+  assert.deepEqual(buildRequest(item('ingredients'), { autoAddCharacters: true }, assets).files.map((f) => f.name), ['alice.png']);
+  assert.equal(buildRequest(item('ingredients'), { autoAddCharacters: false }, assets).files.length, 3, 'capped at 3');
+  assert.equal(buildRequest(item('ingredients'), { autoAddCharacters: false, maxIngredientImages: 2 }, assets).files.length, 2);
 });
 
-test('wantsNewChat', () => {
-  assert.equal(wantsNewChat({ mode: 'text', concat: true, newChatPerPrompt: true }, false), false);
-  assert.equal(wantsNewChat({ mode: 'text', concat: true }, true), true);
-  assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: true }, false), true);
-  assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: false, newChatOnStart: true }, true), true);
-  assert.equal(wantsNewChat({ mode: 'text', newChatPerPrompt: false, newChatOnStart: false }, true), false);
+test('makeItems: one item per output, mode options', () => {
+  let n = 0;
+  const items = makeItems(['a', 'b'], { mode: 'text', firstIndex: 3, outputs: 2, chatMode: 'concat', imageMode: 'last' }, () => `id${n++}`);
+  assert.deepEqual(items.map((i) => [i.index, i.copy, i.copies, i.prompt, i.chatMode, i.imageMode]), [
+    [3, 0, 2, 'a', 'concat', 'new'], [3, 1, 2, 'a', 'concat', 'new'], [4, 0, 2, 'b', 'concat', 'new'], [4, 1, 2, 'b', 'concat', 'new'],
+  ]);
+  const img = makeItems(['x'], { mode: 'textToImage', firstIndex: 0, outputs: 99, chatMode: 'concat', imageMode: 'last' });
+  assert.equal(img.length, 50);
+  assert.equal(img[0].chatMode, 'new');
+  assert.equal(img[0].imageMode, 'last');
+  assert.equal(img[0].status, 'queued');
 });
 
-test('wantsNewChat with singleChat', () => {
-  const s = { mode: 'textToImage', singleChat: true, newChatPerPrompt: true, newChatOnStart: true };
-  assert.equal(wantsNewChat(s, true, true), false, 'reuse the session chat');
-  assert.equal(wantsNewChat(s, false, true), false);
-  assert.equal(wantsNewChat(s, true, false), true, 'first prompt with no session starts one');
-  assert.equal(wantsNewChat(s, false, false), false, 'never a new chat per prompt');
-  assert.equal(wantsNewChat({ ...s, mode: 'text', concat: true }, false, true), false);
+test('startsNewChat: only after a completed Concat prompt does the chat continue', () => {
+  assert.equal(startsNewChat(null), true);
+  assert.equal(startsNewChat({ chatMode: 'new', status: 'completed' }), true);
+  assert.equal(startsNewChat({ chatMode: 'concat', status: 'completed' }), false);
+  assert.equal(startsNewChat({ chatMode: 'concat', status: 'failed' }), true);
 });
 
 test('conversationId', () => {
@@ -136,12 +142,9 @@ test('conversationId', () => {
 
 test('wasInterrupted: only a sent-but-uncollected prompt resumes instead of resending', () => {
   assert.equal(wasInterrupted({ stage: 'reply', error: 'Timed out waiting for the reply' }), true);
+  assert.equal(wasInterrupted({ interrupted: true, error: 'The ChatGPT page was reloaded' }), true);
   assert.equal(wasInterrupted({ stage: 'send', error: 'Could not send the prompt' }), false);
   assert.equal(wasInterrupted({ stage: 'chatgpt', error: 'ChatGPT error: something went wrong' }), false);
-  // Messaging failures around the driver (tab closed or reloaded mid-reply).
-  assert.equal(wasInterrupted({ error: 'Could not establish connection. Receiving end does not exist.' }), true);
-  assert.equal(wasInterrupted({ error: 'No response from the ChatGPT tab (page reloaded?)' }), true);
-  assert.equal(wasInterrupted({ error: 'Add at least one source image' }), false);
 });
 
 test('browserName: tells the major desktop browsers apart', () => {
@@ -164,8 +167,7 @@ test('firefoxManifest: sidebar + event page, no Chromium-only keys', () => {
   assert.equal(manifest.side_panel.default_path, 'sidepanel/index.html', 'source manifest untouched');
 });
 
-test('extFromUrl', async () => {
-  const { extFromUrl } = await import('../sidepanel/runner.js');
+test('extFromUrl', () => {
   assert.equal(extFromUrl('https://files.oaiusercontent.com/file-abc.webp?se=1&sig=x'), 'webp');
   assert.equal(extFromUrl('https://x.com/a/b.JPEG'), 'jpg');
   assert.equal(extFromUrl('https://chatgpt.com/backend-api/estuary/content?id=file_1'), 'png');

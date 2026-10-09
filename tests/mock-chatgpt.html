@@ -8,34 +8,19 @@
   [contenteditable] { border: 1px solid #999; min-height: 40px; padding: 6px; white-space: pre-wrap; }
   article { border-bottom: 1px solid #ddd; padding: 8px 0; }
   button { margin-top: 6px; min-width: 24px; min-height: 24px; }
+  img { width: 256px; height: 256px; display: block; }
 </style>
 </head>
 <body>
   <!--
-    Minimal imitation of chatgpt.com's DOM, used by tests/e2e.mjs.
-    - The first message moves the URL to /c/<id>; conversations persist in localStorage, so
-      reloading or navigating back to /c/<id> shows the same thread (like the real site).
-    - Replies are stored as soon as a prompt is sent (the server keeps generating even if the
-      page goes away), then streamed on screen.
-    - Prompt words: "image" -> an image reply, "forbidden" -> policy refusal, "fail" -> error,
-      "slow" -> long streaming, "ask first" -> a question back instead of an image (the image
-      comes with the next message), "late image" -> the image shows up a few seconds after the
-      reply text is done and Stop is gone (?lateImageMs=…), "plain image" -> the image is a data:
-      URL with a Turkish alt text (no known image selector matches it), "blurry image" -> a blurred
-      256 px preview shows for a few seconds after Stop is gone, then the final 512 px image,
-      "sticky" -> a streaming marker stays on the reply after it's finished.
-    - The page header always shows a spinner and a progress bar outside the composer, like the
-      real site's loaders, which must not be mistaken for an upload in progress.
-
-    Two page layouts, picked with ?ui=legacy|2026 (remembered in localStorage):
-    - legacy: the markup the extension was first built against (#prompt-textarea, data-testid
-      send/stop buttons, data-message-author-role on every message).
-    - 2026: the redesign reported in Sept 2026. Composer is a bare contenteditable
-      role="textbox"; no test ids anywhere; Send, Stop and Voice share one button slot whose
-      aria-label is localized (?lang=en|tr|xx); Stop is only recognizable by its square icon when
-      the label is unknown; messages carry no role markers (reply body is a MarkdownRoot-<hash>
-      div); the Copy action bar shows up only after a reply is finished; and every reply starts
-      with a few silent seconds of "Thinking".
+    Minimal imitation of chatgpt.com, used by tests/e2e.mjs together with tests/fake-chatgpt.mjs
+    (the backend). Like the real site, the page sends a prompt with
+    fetch('/backend-api/f/conversation'), shows a Stop button until the reply stream closes, moves
+    to /c/<id>, and draws the thread from GET /backend-api/conversation/<id>, polling (with Stop
+    still showing) while an image or a handed-off reply is still on its way. "New chat" is
+    client-side (no page load).
+    The page also shows a spinner and a progress bar outside the composer, like the real site's
+    loaders, which must not be mistaken for an upload in progress.
   -->
   <nav>
     <a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a>
@@ -46,273 +31,182 @@
   <form id="composerForm" onsubmit="return false">
     <input type="file" accept="image/*" multiple hidden id="upload" />
     <div id="attachments"></div>
+    <div id="prompt-textarea" contenteditable="true" class="ProseMirror" role="textbox"></div>
+    <button type="button" id="voice" aria-label="Start voice mode" data-testid="composer-speech-button">🎤</button>
+    <button type="button" id="send" data-testid="send-button" aria-label="Send prompt">↑</button>
   </form>
 <script>
-  const params = new URLSearchParams(location.search);
-  const hasStorage = (() => { try { localStorage.setItem('_t', '1'); return true; } catch { return false; } })();
-  const db = {
-    get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-    set: (k, v) => { if (hasStorage) localStorage.setItem(k, JSON.stringify(v)); },
-  };
-  if (params.get('ui')) db.set('ui', params.get('ui'));
-  if (params.get('lang')) db.set('lang', params.get('lang'));
-  if (params.get('lateImageMs')) db.set('lateImageMs', Number(params.get('lateImageMs')));
-  const UI = db.get('ui', 'legacy');
-  const LABELS = {
-    en: { send: 'Send prompt', stop: 'Stop streaming', voice: 'Start voice mode', dictate: 'Dictate button', copy: 'Copy', attach: 'Add photos & files', thinking: 'Thinking' },
-    tr: { send: 'Gönder', stop: 'Durdur', voice: 'Sesli iletişimi başlat', dictate: 'Dikte et', copy: 'Kopyala', attach: 'Dosya ekle', thinking: 'Düşünüyor' },
-    // Labels the extension can't possibly know: only structure and icons are left to go on.
-    xx: { send: 'Qzx-1', stop: 'Qzx-2', voice: 'Qzx-3', dictate: 'Qzx-4', copy: 'Qzx-5', attach: 'Qzx-6', thinking: 'Qzx-7' },
-  }[db.get('lang', 'tr')];
-  const ICONS = {
-    arrow: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M8.99992 16V6.41407L5.70696 9.70704"/></svg>',
-    stop: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M4.5 5.75C4.5 5.05964 5.05964 4.5 5.75 4.5H14.25Z"/></svg>',
-    voice: '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M7 4v12"/><path d="M10 2v16"/><path d="M13 6v8"/><path d="M4 8v4"/></svg>',
-  };
-
   const thread = document.getElementById('thread');
-  const form = document.getElementById('composerForm');
+  const box = document.getElementById('prompt-textarea');
+  const send = document.getElementById('send');
   const upload = document.getElementById('upload');
-  let attached = [];
-  let turnNo = 0;
-  let generating = false;
-  let stopRequested = false;
+  const params = new URLSearchParams(location.search);
   let convId = (location.pathname.match(/\/c\/([\w-]+)/) || [])[1] || null;
-  const bump = (k) => db.set(k, db.get(k, 0) + 1);
+  let attached = [];
+  let generating = null; // AbortController while a reply streams
+  let pending = false; // a reply is still being written after its stream closed
+  let pollTimer = null;
+  const count = (k) => localStorage.setItem(k, String(Number(localStorage.getItem(k) || 0) + 1));
+  count('pageLoads');
 
-  // Count real page loads (a client-side "New chat" must not add one).
-  bump('pageLoads');
+  // The site's own scripts capture the backend token and send it with every backend call.
+  let token = '';
+  const auth = async () => {
+    if (!token) token = (await (await fetch('/api/auth/session')).json()).accessToken;
+    return { authorization: `Bearer ${token}` };
+  };
 
-  // ---- Composer ------------------------------------------------------------------------
-  const box = document.createElement('div');
-  box.contentEditable = 'true';
-  box.className = 'ProseMirror';
-  let slot; // legacy: the send button (swapped for a stop button while generating); 2026: the shared slot
-  if (UI === '2026') {
-    box.setAttribute('role', 'textbox');
-    box.setAttribute('aria-label', 'ChatGPT');
-    const attach = document.createElement('button');
-    attach.type = 'button';
-    attach.setAttribute('aria-label', LABELS.attach);
-    attach.textContent = '+';
-    const dictate = document.createElement('button');
-    dictate.type = 'button';
-    dictate.dataset.state = 'closed';
-    dictate.setAttribute('aria-label', LABELS.dictate);
-    dictate.innerHTML = ICONS.voice;
-    dictate.addEventListener('click', () => bump('wrongClicks'));
-    slot = document.createElement('button');
-    slot.addEventListener('click', () => {
-      if (slot.dataset.mode === 'send') doSend();
-      else if (slot.dataset.mode === 'stop') stopRequested = true;
-      else bump('wrongClicks'); // voice mode must never be started
-    });
-    box.addEventListener('input', updateSlot);
-    form.append(attach, box, dictate, slot);
-    updateSlot();
-  } else {
-    box.id = 'prompt-textarea';
-    slot = document.createElement('button');
-    slot.type = 'button';
-    slot.dataset.testid = 'send-button';
-    slot.id = 'send';
-    slot.textContent = 'Send';
-    slot.addEventListener('click', doSend);
-    form.append(box, slot);
-  }
+  document.getElementById('voice').addEventListener('click', () => count('wrongClicks'));
+  send.addEventListener('click', () => {
+    if (generating || pending) {
+      generating?.abort();
+      clearTimeout(pollTimer);
+      pending = false;
+      setGenerating(null);
+      count('stoppedReplies');
+      return;
+    }
+    doSend();
+  });
   box.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !generating) { e.preventDefault(); doSend(); }
   });
-
-  function updateSlot() {
-    const mode = generating ? 'stop' : box.innerText.trim() ? 'send' : 'voice';
-    if (slot.dataset.mode === mode) return;
-    slot.dataset.mode = mode;
-    slot.type = mode === 'send' ? 'submit' : 'button';
-    slot.setAttribute('aria-label', LABELS[mode]);
-    slot.innerHTML = ICONS[mode === 'send' ? 'arrow' : mode];
-  }
-
-  // Client-side "New chat", like the real site: no page reload.
-  document.getElementById('newChat').addEventListener('click', (e) => {
-    e.preventDefault();
-    history.pushState(null, '', '/');
-    convId = null;
-    turnNo = 0;
-    thread.replaceChildren();
-  });
-
   upload.addEventListener('change', () => {
     attached = [...upload.files].map((f) => f.name);
     document.getElementById('attachments').textContent = attached.join(', ');
   });
+  document.getElementById('newChat').addEventListener('click', (e) => {
+    e.preventDefault();
+    history.pushState(null, '', '/');
+    convId = null;
+    clearTimeout(pollTimer);
+    pending = false;
+    setGenerating(generating);
+    thread.replaceChildren();
+  });
 
-  // ---- Thread --------------------------------------------------------------------------
-  function imageCanvas(size = 512, color = '#3a7') {
-    const c = document.createElement('canvas');
-    c.width = size; c.height = size;
-    const g = c.getContext('2d');
-    g.fillStyle = color; g.fillRect(0, 0, size, size);
-    return c;
+  function setGenerating(ctrl) {
+    generating = ctrl;
+    const busy = !!ctrl || pending;
+    send.dataset.testid = busy ? 'stop-button' : 'send-button';
+    send.setAttribute('aria-label', busy ? 'Stop streaming' : 'Send prompt');
+    send.textContent = busy ? '■' : '↑';
   }
 
-  function imageBlobUrl(size, color) {
-    return new Promise((r) => imageCanvas(size, color).toBlob((b) => r(URL.createObjectURL(b)), 'image/png'));
+  function article(role, text) {
+    const a = document.createElement('article');
+    a.dataset.turn = role;
+    a.dataset.testid = `conversation-turn-${thread.children.length + 1}`;
+    const body = document.createElement('div');
+    if (role === 'assistant') body.className = 'markdown';
+    body.textContent = text;
+    a.append(body);
+    thread.append(a);
+    return a;
   }
 
-  function addUser(text) {
-    const user = document.createElement('article');
-    if (UI === '2026') {
-      user.innerHTML = '<div class="user-bubble"></div>';
-    } else {
-      user.dataset.testid = `conversation-turn-${++turnNo}`;
-      user.innerHTML = '<div data-message-author-role="user"></div>';
-    }
-    user.firstChild.textContent = text;
-    thread.append(user);
-  }
-
-  /** Returns { turn, body } where body receives the reply text. */
-  function addAssistant() {
-    const bot = document.createElement('article');
-    if (UI === '2026') {
-      bot.innerHTML = '<div><div class="MarkdownRoot-a1b2c3"></div></div>';
-      return { turn: bot, body: bot.querySelector('div > div') };
-    }
-    bot.dataset.testid = `conversation-turn-${++turnNo}`;
-    bot.innerHTML = '<div data-message-author-role="assistant"><div class="markdown"></div></div>';
-    return { turn: bot, body: bot.querySelector('.markdown') };
-  }
-
-  function addActionBar(turn) {
-    if (UI !== '2026') return;
-    const bar = document.createElement('div');
-    bar.innerHTML = `<button type="button" aria-label="${LABELS.copy}"><svg viewBox="0 0 20 20" width="16" height="16"><path d="M1 1h8v8H1z"/></svg></button>`;
-    turn.append(bar);
-  }
-
-  async function addImage(bot, prompt = '') {
-    const img = document.createElement('img');
-    img.width = 512; img.height = 512;
-    if (/plain image/i.test(prompt)) {
-      img.alt = 'Görsel oluşturuldu';
-      img.src = imageCanvas().toDataURL('image/png');
-    } else {
-      img.alt = 'Generated image';
-      img.src = await imageBlobUrl();
-    }
-    await img.decode().catch(() => {});
-    bot.append(img);
-  }
-
-  /** A blurred low-res preview, like the one ChatGPT shows while still drawing. */
-  async function addPreview(bot) {
-    const img = document.createElement('img');
-    img.alt = 'Generated image';
-    img.width = 512; img.height = 512;
-    img.style.filter = 'blur(12px)';
-    img.src = await imageBlobUrl(256, '#c33');
-    await img.decode().catch(() => {});
-    bot.append(img);
-    return img;
-  }
-
-  function replyFor(prompt, files) {
-    if (/fail/i.test(prompt)) return { text: 'Something went wrong. Please try again later.', image: false };
-    if (/ask first/i.test(prompt)) return { text: 'Sure! Would you like it in landscape or portrait?', image: false };
-    if (/forbidden/i.test(prompt)) {
-      return { text: 'I can’t create that image because the request violates our content policies.', image: false };
-    }
-    return {
-      text: `Echo: ${prompt}` + (files.length ? ` [files: ${files.join(', ')}]` : ''),
-      image: /image/i.test(prompt),
-    };
-  }
-
-  // Restore a saved conversation (reload / navigating back).
-  (async () => {
+  /** Draw the conversation from the backend; keep polling while something is still coming. */
+  async function refresh() {
+    clearTimeout(pollTimer);
     if (!convId) return;
-    const conv = db.get(`conv:${convId}`, null);
-    if (!conv) {
-      thread.textContent = 'Conversation not found';
-      return;
+    const id = convId;
+    const res = await fetch(`/backend-api/conversation/${id}`, { headers: await auth() });
+    if (id !== convId) return;
+    if (!res.ok) {
+      if (res.status === 404 && !thread.children.length) thread.textContent = 'Conversation not found';
+      return false;
     }
-    for (const t of conv.turns) {
-      if (t.role === 'user') addUser(t.text);
-      else {
-        const { turn, body } = addAssistant();
-        thread.append(turn);
-        body.textContent = t.text;
-        if (t.image) await addImage(turn, t.prompt || '');
-        addActionBar(turn);
+    const conv = await res.json();
+    const msgs = [];
+    for (let n = conv.mapping[conv.current_node]; n; n = conv.mapping[n.parent]) if (n.message) msgs.unshift(n.message);
+    thread.replaceChildren();
+    pending = false;
+    let reply = null;
+    for (const m of msgs) {
+      if (m.author.role === 'user') { article('user', m.content.parts.join('\n')); reply = null; continue; }
+      if (m.status === 'in_progress') pending = true;
+      const parts = m.content.parts || [];
+      const text = m.author.role === 'assistant' && m.recipient === 'all' ? parts.filter((p) => typeof p === 'string').join('') : '';
+      const images = parts.filter((p) => p && p.content_type === 'image_asset_pointer');
+      if (!text && !images.length) continue;
+      if (!reply) reply = article('assistant', '');
+      if (text) reply.firstChild.textContent += text;
+      for (const p of images) {
+        const img = document.createElement('img');
+        img.alt = 'Generated image';
+        img.src = `/backend-api/estuary/content?id=${p.asset_pointer.replace(/^.*:\/\//, '')}`;
+        reply.append(img);
       }
     }
-  })();
+    setGenerating(generating);
+    if (pending) pollTimer = setTimeout(refresh, 1000);
+    return true;
+  }
+
+  /** When the conversation can't be read: draw the reply from the stream itself. */
+  function drawFromStream(text) {
+    const reply = article('assistant', '');
+    for (const block of text.split('\n\n')) {
+      const data = block.split('\n').find((l) => l.startsWith('data: '))?.slice(6);
+      let ev;
+      try { ev = JSON.parse(data); } catch { continue; }
+      if (typeof ev?.v === 'string') reply.firstChild.textContent += ev.v;
+      for (const p of ev?.v?.message?.content?.parts || []) {
+        if (!p?.asset_pointer) continue;
+        const img = document.createElement('img');
+        img.alt = 'Generated image';
+        img.src = `/backend-api/estuary/content?id=${p.asset_pointer.replace(/^.*:\/\//, '')}`;
+        reply.append(img);
+      }
+    }
+    const bar = document.createElement('div');
+    bar.innerHTML = '<button type="button" aria-label="Copy" data-testid="copy-turn-action-button">⧉</button>';
+    reply.append(bar);
+  }
+  refresh();
 
   async function doSend() {
     const prompt = box.innerText.trim();
     if (!prompt || generating) return;
     box.innerHTML = '';
-    const files = attached; attached = [];
+    const files = attached;
+    attached = [];
     document.getElementById('attachments').textContent = '';
-
-    if (!convId) {
-      convId = `mock-${Date.now().toString(36)}`;
-      history.pushState(null, '', `/c/${convId}`);
-      db.set('conversations', [...db.get('conversations', []), convId]);
+    article('user', prompt);
+    const ctrl = new AbortController();
+    setGenerating(ctrl);
+    let streamText = '';
+    const body = {
+      action: 'next',
+      messages: [{ id: crypto.randomUUID(), author: { role: 'user' }, content: { content_type: 'text', parts: [prompt] }, metadata: { attachments: files.map((name) => ({ name })) } }],
+      conversation_id: convId || undefined,
+      model: params.get('model') || 'auto',
+    };
+    try {
+      const res = await fetch('/backend-api/f/conversation', {
+        method: 'POST', headers: { ...(await auth()), 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal,
+      });
+      const text = await res.text();
+      streamText = text;
+      const id = (/"conversation_id":\s*"([^"]+)"/.exec(text) || [])[1];
+      if (id && !convId) {
+        convId = id;
+        history.pushState(null, '', `/c/${id}`);
+      }
+      const err = /"error":\s*"([^"]+)"/.exec(text)?.[1] || (!res.ok && JSON.parse(text).detail);
+      if (err) {
+        const banner = document.createElement('div');
+        banner.className = 'text-token-text-error';
+        banner.textContent = err;
+        thread.append(banner);
+        return;
+      }
+    } catch {
+      return; // stopped or navigated away
+    } finally {
+      setGenerating(null);
     }
-    const reply = replyFor(prompt, files);
-    const conv = db.get(`conv:${convId}`, { turns: [] });
-    conv.turns.push({ role: 'user', text: prompt }, { role: 'assistant', prompt, ...reply });
-    db.set(`conv:${convId}`, conv);
-    db.set('sent', [...db.get('sent', []), prompt]);
-
-    addUser(prompt);
-    generating = true;
-    stopRequested = false;
-    let stop = null;
-    if (UI === '2026') updateSlot();
-    else {
-      stop = document.createElement('button');
-      stop.type = 'button';
-      stop.dataset.testid = 'stop-button';
-      stop.textContent = 'Stop';
-      slot.replaceWith(stop);
-    }
-
-    const { turn, body } = addAssistant();
-    thread.append(turn);
-    if (UI === '2026') {
-      // A few silent seconds of "Thinking" with no reply text, like reasoning models.
-      const thinking = document.createElement('div');
-      thinking.className = 'thinking';
-      thinking.textContent = LABELS.thinking;
-      turn.prepend(thinking);
-      const ms = Number(db.get('thinkMs', 4000));
-      for (let t = 0; t < ms && !stopRequested; t += 100) await new Promise((r) => setTimeout(r, 100));
-      thinking.remove();
-    }
-    const wordDelay = /slow/i.test(prompt) ? 1500 : 60;
-    for (const word of reply.text.split(' ')) {
-      if (stopRequested) { bump('stoppedReplies'); break; }
-      body.textContent += (body.textContent ? ' ' : '') + word;
-      await new Promise((r) => setTimeout(r, wordDelay));
-    }
-    const late = reply.image && /late image|blurry image/i.test(prompt) && !stopRequested;
-    if (reply.image && !stopRequested && !late) await addImage(turn, prompt);
-    generating = false;
-    if (UI === '2026') updateSlot();
-    else stop.replaceWith(slot);
-    if (late) {
-      // Stop is gone and the text is done, but the picture is still on its way (blurred preview first).
-      const preview = /blurry/i.test(prompt) ? await addPreview(turn) : null;
-      await new Promise((r) => setTimeout(r, Number(db.get('lateImageMs', 6000))));
-      preview?.remove();
-      await addImage(turn, prompt);
-    }
-    // ChatGPT sometimes leaves a streaming marker behind on a finished reply.
-    if (/sticky/i.test(prompt)) body.dataset.isStreaming = 'true';
-    addActionBar(turn);
+    if (!(await refresh())) drawFromStream(streamText);
   }
 </script>
 </body>

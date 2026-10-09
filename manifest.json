@@ -3,7 +3,7 @@
   "name": "__MSG_extName__",
   "short_name": "ChatGPT Automation",
   "description": "__MSG_extDescription__",
-  "version": "1.1.2",
+  "version": "2.0.0",
   "default_locale": "en",
   "minimum_chrome_version": "116",
   "icons": {
@@ -45,8 +45,21 @@
         "https://chat.openai.com/*"
       ],
       "js": [
+        "content/sse.js",
+        "content/net-hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
         "content/selectors.js",
-        "content/driver.js"
+        "content/conversation.js",
+        "content/agent.js"
       ],
       "run_at": "document_idle"
     }

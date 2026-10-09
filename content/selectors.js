@@ -1,10 +1,11 @@
-// Everything the driver knows about chatgpt.com's page lives here: DOM selectors, button labels
-// in many languages, and the phrases that mean an error or a refusal.
-// When ChatGPT ships a UI change, this is usually the only file that needs patching.
+// What agent.js knows about chatgpt.com's page: DOM selectors, button labels in many languages,
+// and the phrases that mean an error or a refusal.
+// The page is only used to type and send prompts. Whether a reply is finished, and what it
+// contains, comes from ChatGPT's own backend (net-hook.js + conversation.js). The selectors below
+// that are about replies are a fallback for when the backend can't be read.
 //
-// The driver never depends on a single selector: every list is tried in order, buttons are
-// recognized by test id, then by label (any language below), then by icon or type, and replies
-// are found by position after the sent prompt, so role markers are optional.
+// Nothing depends on a single selector: every list is tried in order, and buttons are recognized
+// by test id, then by label (any language below), then by icon or type.
 globalThis.CGA_SELECTORS = {
   newChatButton: ['[data-testid="create-new-chat-button"]', 'a[href="/"][data-discover]', 'button[aria-label*="New chat"]', 'a[aria-label*="New chat"]', 'nav a[href="/"]'],
   // Sept 2026: the composer is a bare contenteditable role="textbox" (no #prompt-textarea).
@@ -19,7 +20,6 @@ globalThis.CGA_SELECTORS = {
   stopButton: ['[data-testid="stop-button"]', 'button[aria-label="Stop streaming"]', 'button[aria-label="Stop generating"]'],
   // Stop is drawn as a rounded square: one path starting like this (or a lone <rect>).
   stopIconPaths: ['M4.5 5.75'],
-  streaming: ['.result-streaming', '[data-is-streaming="true"]', '[data-message-streaming="true"]'],
   fileInput: ['input[type="file"][accept*="image"]', 'input[type="file"]'],
   // Conversation turns. The first selector that matches anything wins.
   turn: ['article[data-testid^="conversation-turn"]', '[data-testid^="conversation-turn"]', 'article[data-turn]', '[data-turn]', 'main article'],

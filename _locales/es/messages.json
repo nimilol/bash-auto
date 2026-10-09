@@ -1,45 +1,81 @@
 {
   "extName": {
-    "message": "ChatGPT Automation - Auto ChatGPT"
+    "message": "ChatGPT Automation - ChatGPT automático"
   },
   "extDescription": {
-    "message": "Auto ChatGPT para tus prompts a escala. Genera en lote y descarga automáticamente respuestas e imágenes en ChatGPT.com."
+    "message": "ChatGPT automático para tus prompts a escala. Genera en lote y descarga respuestas e imágenes de ChatGPT.com."
   },
   "appTitle": {
     "message": "ChatGPT Automation"
   },
+  "openInWindow": {
+    "message": "Abrir en una ventana aparte"
+  },
+  "tabControl": {
+    "message": "Control"
+  },
+  "tabSetting": {
+    "message": "Ajustes"
+  },
   "modeHeading": {
     "message": "Modo"
   },
-  "modeText": {
+  "mode_text": {
+    "message": "Procesar texto"
+  },
+  "mode_ingredients": {
+    "message": "Ingredientes a texto"
+  },
+  "mode_textToImage": {
+    "message": "Texto a imagen"
+  },
+  "mode_imageToImage": {
+    "message": "Imagen a imagen"
+  },
+  "modeShort_text": {
     "message": "Texto"
   },
-  "modeTextToImage": {
-    "message": "Texto → Imagen"
+  "modeShort_ingredients": {
+    "message": "Ingredientes"
   },
-  "modeImageToImage": {
-    "message": "Imagen → Imagen"
+  "modeShort_textToImage": {
+    "message": "Texto → imagen"
   },
-  "modeIngredients": {
-    "message": "Ingredientes → Texto"
+  "modeShort_imageToImage": {
+    "message": "Imagen → imagen"
   },
   "modeHint_text": {
-    "message": "Genera una respuesta de texto para cada prompt de la cola."
-  },
-  "modeHint_textToImage": {
-    "message": "Genera imágenes a partir de descripciones de texto. Se descargan todas las imágenes generadas."
-  },
-  "modeHint_imageToImage": {
-    "message": "Envía cada prompt junto con una imagen de origen para transformarla o mejorarla."
+    "message": "Una respuesta de texto por cada prompt."
   },
   "modeHint_ingredients": {
-    "message": "Envía imágenes de referencia con cada prompt y recopila las respuestas de texto."
+    "message": "Tus imágenes se envían con cada prompt y se recogen las respuestas de texto."
   },
-  "concatLabel": {
-    "message": "Modo Concat"
+  "modeHint_textToImage": {
+    "message": "Imágenes a partir de descripciones. Se descargan todas las imágenes generadas."
   },
-  "concatHint": {
-    "message": "Mantiene todos los prompts en una sola conversación para que cada uno continúe la respuesta anterior. Al final se guarda un archivo combinado."
+  "modeHint_imageToImage": {
+    "message": "Cada prompt se envía con tus imágenes de origen para transformarlas."
+  },
+  "uploadImages": {
+    "message": "Subir imágenes"
+  },
+  "ingredientImages": {
+    "message": "Imágenes / componentes"
+  },
+  "sourceImages": {
+    "message": "Imágenes de origen"
+  },
+  "clear": {
+    "message": "Borrar"
+  },
+  "remove": {
+    "message": "Quitar"
+  },
+  "autoAddCharacters": {
+    "message": "Añadir imágenes de personajes"
+  },
+  "autoAddCharactersHint": {
+    "message": "Adjunta las imágenes cuyo nombre aparece en el prompt: hero.png va con los prompts que mencionan \"hero\"."
   },
   "aspectRatio": {
     "message": "Relación de aspecto"
@@ -47,119 +83,89 @@
   "aspectNone": {
     "message": "No especificar"
   },
-  "saveTextWithImages": {
-    "message": "Guardar también la respuesta de texto"
-  },
-  "chainLabel": {
-    "message": "Modo cadena (Chain)"
-  },
-  "chainHint": {
-    "message": "Usa la imagen generada por el prompt anterior como entrada del siguiente."
-  },
-  "sourceImages": {
-    "message": "Imágenes de origen"
-  },
-  "addImages": {
-    "message": "Añadir imágenes"
-  },
-  "clear": {
-    "message": "Borrar"
-  },
-  "autoMatchLabel": {
-    "message": "Añadir imágenes por nombre de archivo"
-  },
-  "autoMatchHint": {
-    "message": "Solo adjunta imágenes cuyo nombre aparece en el prompt (p. ej. \"alice.png\" si el prompt menciona a Alice). Desactivado = adjuntar todas."
-  },
-  "referenceImages": {
-    "message": "Imágenes de referencia"
-  },
   "promptsHeading": {
     "message": "Prompts"
   },
   "promptsPlaceholder": {
-    "message": "Un prompt por línea…\n\nO separa prompts de varias líneas con una línea en blanco."
+    "message": "Escribe los prompts. Sepáralos con una línea en blanco."
   },
-  "promptsHint": {
-    "message": "Un prompt por línea. Si el texto contiene líneas en blanco, cada bloque es un prompt."
+  "uploadTxt": {
+    "message": "o sube un archivo .txt"
   },
-  "addToQueue": {
-    "message": "Añadir a la cola"
+  "promptCount": {
+    "message": "{0} prompts"
   },
-  "importFile": {
-    "message": "Importar .txt / .csv"
+  "concurrency": {
+    "message": "Prompts simultáneos"
   },
-  "settingsHeading": {
-    "message": "Ajustes"
+  "promptDelay": {
+    "message": "Pausa entre prompts (s)"
   },
-  "minDelay": {
-    "message": "Retraso mínimo (s)"
+  "randomDelay": {
+    "message": "Pausa aleatoria (s)"
   },
-  "maxDelay": {
-    "message": "Retraso máximo (s)"
+  "saveToFolder": {
+    "message": "Guardar en carpeta"
   },
-  "maxRetries": {
-    "message": "Reintentos máximos"
+  "autoRename": {
+    "message": "Renombrar archivos"
   },
-  "timeoutMinutes": {
-    "message": "Tiempo límite por prompt (min)"
+  "run": {
+    "message": "Ejecutar"
   },
-  "newChatPerPrompt": {
-    "message": "Nuevo chat para cada prompt"
+  "stop": {
+    "message": "Detener"
   },
-  "newChatOnStart": {
-    "message": "Nuevo chat al iniciar la ejecución"
+  "fixError": {
+    "message": "Corregir error"
   },
-  "autoDownload": {
-    "message": "Descargar resultados automáticamente"
+  "enableBackground": {
+    "message": "Activar modo en segundo plano"
   },
-  "projectFolder": {
-    "message": "Carpeta del proyecto"
+  "runningInBackground": {
+    "message": "En segundo plano"
   },
-  "renameByPrompt": {
-    "message": "Nombrar archivos según el prompt"
+  "backgroundHint": {
+    "message": "El navegador pausa chatgpt.com cuando su pestaña está oculta. El modo en segundo plano comparte la pestaña de chatgpt.com (elígela en el diálogo) para que siga funcionando detrás de otras ventanas. No se graba ni se envía nada."
   },
   "queueHeading": {
     "message": "Cola"
   },
-  "start": {
-    "message": "Iniciar"
-  },
-  "resume": {
-    "message": "Reanudar"
-  },
-  "pause": {
-    "message": "Pausar"
-  },
-  "stop": {
-    "message": "Detener"
+  "countsLine": {
+    "message": "{0}/{1} listos · {2} fallidos · {3} rechazados"
   },
   "retryFailed": {
     "message": "Reintentar fallidos"
   },
   "resetAll": {
-    "message": "Restablecer todo"
+    "message": "Repetir todo"
   },
   "clearQueue": {
     "message": "Vaciar cola"
   },
-  "keepPanelOpen": {
-    "message": "Mantén este panel abierto mientras se ejecuta la cola. Debes haber iniciado sesión en chatgpt.com."
+  "confirmClearAgain": {
+    "message": "Pulsa otra vez para vaciar"
   },
   "queueEmpty": {
-    "message": "Aún no hay prompts. Añade algunos arriba."
+    "message": "Aún no hay prompts."
   },
-  "logHeading": {
-    "message": "Registro de actividad"
+  "keepPanelOpen": {
+    "message": "Mantén este panel abierto mientras se ejecuta la cola. Si se cierra, Ejecutar continúa donde se quedó."
   },
   "openChat": {
     "message": "Abrir chat"
   },
   "rerun": {
-    "message": "Ejecutar de nuevo"
+    "message": "Repetir"
   },
-  "remove": {
-    "message": "Quitar"
+  "optionToggleHint": {
+    "message": "Pulsa para cambiar"
+  },
+  "retriesCount": {
+    "message": "reintento {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "{0} imagen(es)"
   },
   "status_queued": {
     "message": "En cola"
@@ -173,59 +179,224 @@
   "status_failed": {
     "message": "Fallido"
   },
-  "retriesCount": {
-    "message": "Reintentos {0}/{1}"
+  "status_refused": {
+    "message": "Rechazado"
   },
-  "imagesCount": {
-    "message": "{0} imagen(es)"
+  "phase_starting": {
+    "message": "Abriendo chat"
   },
-  "countsLine": {
-    "message": "{0}/{1} completados · {2} en curso · {3} en cola · {4} fallidos · {5} rechazados · {6}%"
+  "phase_typing": {
+    "message": "Enviando"
+  },
+  "phase_sent": {
+    "message": "Enviado"
+  },
+  "phase_replying": {
+    "message": "Respondiendo"
+  },
+  "phase_image": {
+    "message": "Creando imagen"
+  },
+  "phase_nudged": {
+    "message": "Imagen solicitada"
+  },
+  "logHeading": {
+    "message": "Registro de actividad"
+  },
+  "copyDiagnostics": {
+    "message": "Copiar diagnóstico"
+  },
+  "copyDiagnosticsHint": {
+    "message": "Copia lo que la extensión ve en la página de ChatGPT (sin el texto de prompts ni respuestas). Pégalo en un informe de error."
+  },
+  "language": {
+    "message": "Idioma"
+  },
+  "defaultMode": {
+    "message": "Modo predeterminado"
+  },
+  "textOutputs": {
+    "message": "Resultados por prompt (texto)"
+  },
+  "imageOutputs": {
+    "message": "Resultados por prompt (imagen)"
+  },
+  "textModel": {
+    "message": "Modelo de texto"
+  },
+  "imageModel": {
+    "message": "Modelo de imagen"
+  },
+  "modelDefault": {
+    "message": "Modelo actual de ChatGPT"
+  },
+  "modelHint": {
+    "message": "Déjalo vacío para usar el modelo elegido en ChatGPT. Si no, el id de chatgpt.com/?model=… (p. ej. gpt-5)."
+  },
+  "defaultPromptMode": {
+    "message": "Modo de prompt predeterminado"
+  },
+  "defaultImageMode": {
+    "message": "Modo de imagen predeterminado"
+  },
+  "chatMode_new": {
+    "message": "Chat nuevo"
+  },
+  "chatMode_concat": {
+    "message": "Concatenar"
+  },
+  "imageMode_new": {
+    "message": "Imagen nueva"
+  },
+  "imageMode_last": {
+    "message": "Última imagen"
+  },
+  "promptModeHint": {
+    "message": "Concatenar: el siguiente prompt sigue en el mismo chat. Última imagen: la imagen del prompt anterior se usa como entrada. Pulsa la etiqueta de un prompt en la cola para cambiarlo."
+  },
+  "maxIngredientImages": {
+    "message": "Máx. imágenes por prompt (ingredientes)"
+  },
+  "maxImageInputs": {
+    "message": "Máx. imágenes por prompt (imagen a imagen)"
+  },
+  "maxRetries": {
+    "message": "Reintentos máximos"
+  },
+  "timeoutMinutes": {
+    "message": "Tiempo límite por prompt (min)"
+  },
+  "textDownload": {
+    "message": "Descarga automática (texto)"
+  },
+  "imageDownload": {
+    "message": "Calidad de descarga (imagen)"
+  },
+  "noDownload": {
+    "message": "No descargar"
+  },
+  "downloadMd": {
+    "message": "Markdown (.md)"
+  },
+  "downloadTxt": {
+    "message": "Texto plano (.txt)"
+  },
+  "downloadOriginal": {
+    "message": "Original (1k)"
+  },
+  "keepTabActive": {
+    "message": "Mantener la pestaña de ChatGPT al frente"
+  },
+  "keepTabActiveHint": {
+    "message": "Con un prompt a la vez, la pestaña de ChatGPT pasa al frente de su ventana antes de cada prompt."
+  },
+  "samplePrompt": {
+    "message": "Una cabaña acogedora en la nieve"
+  },
+  "downloadsFolder": {
+    "message": "Descargas"
   },
   "runnerIdle": {
     "message": "Inactivo"
   },
   "runnerRunning": {
-    "message": "Ejecutando…"
-  },
-  "runnerPausing": {
-    "message": "Pausando tras este prompt…"
+    "message": "En curso ({0})"
   },
   "runnerWaiting": {
-    "message": "Siguiente prompt en {0} s"
+    "message": "Siguiente en {0} s"
   },
-  "samplePrompt": {
-    "message": "una cabaña acogedora en la nieve"
+  "runnerStopping": {
+    "message": "Deteniendo…"
   },
-  "downloadsFolder": {
-    "message": "Descargas"
+  "logAdded": {
+    "message": "Añadidos {0} prompt(s) ({1} en la cola)"
   },
-  "confirmClear": {
-    "message": "¿Quitar todos los prompts de la cola?"
+  "logNoPrompts": {
+    "message": "Escribe al menos un prompt."
+  },
+  "logNeedSourceImages": {
+    "message": "Imagen a imagen necesita al menos una imagen de origen: súbela primero."
+  },
+  "logNeedHostAccess": {
+    "message": "Permite el acceso a chatgpt.com para ejecutar la cola."
   },
   "logStarted": {
-    "message": "Cola iniciada."
+    "message": "Cola iniciada"
+  },
+  "logAlreadyRunning": {
+    "message": "La cola ya se está ejecutando en otro panel."
+  },
+  "logFatal": {
+    "message": "Detenida por un error: {0}"
   },
   "logFinished": {
-    "message": "Cola terminada."
-  },
-  "logPausing": {
-    "message": "Se pausará tras el prompt actual."
+    "message": "Cola terminada"
   },
   "logStopped": {
-    "message": "Detenido."
+    "message": "Detenida. Ejecutar continúa donde se quedó."
+  },
+  "logFixing": {
+    "message": "Corregir error: detener ChatGPT, cerrar diálogos y recargar el chat"
+  },
+  "logFixed": {
+    "message": "El prompt {0} se ejecutará de nuevo"
+  },
+  "logSequential": {
+    "message": "Los prompts Concatenar / Última imagen se ejecutan de uno en uno."
+  },
+  "logOpenedTabs": {
+    "message": "Abiertas {0} pestaña(s) más de ChatGPT"
   },
   "logRunning": {
-    "message": "Ejecutando prompt n.º {0}…"
+    "message": "Prompt {0}: empezando"
+  },
+  "logSent": {
+    "message": "Prompt {0}: enviado, esperando la respuesta"
+  },
+  "logWaitingForImage": {
+    "message": "Prompt {0}: ChatGPT está creando la imagen"
+  },
+  "logNudged": {
+    "message": "Prompt {0}: ChatGPT respondió sin imagen, se le pidió generarla"
+  },
+  "logNote": {
+    "message": "Prompt {0}: {1}"
+  },
+  "logPageCheck": {
+    "message": "Prompt {0}: revisión de la página — {1}"
+  },
+  "logResumed": {
+    "message": "Prompt {0}: ya enviado antes de la interrupción, se recogió su respuesta sin reenviarlo"
   },
   "logCompleted": {
-    "message": "Prompt n.º {0} completado."
+    "message": "Prompt {0}: completado en {1} s ({2})"
+  },
+  "logRefused": {
+    "message": "Prompt {0}: rechazado por ChatGPT — se intenta una vez más"
+  },
+  "logRefusedSkip": {
+    "message": "Prompt {0}: rechazado por ChatGPT — omitido"
   },
   "logRetrying": {
-    "message": "El prompt n.º {0} falló: {1} — se reintentará ({2}/{3})."
+    "message": "Prompt {0}: {1} — reintento {2}/{3}"
+  },
+  "logInterrupted": {
+    "message": "Prompt {0}: {1} — el siguiente intento recogerá su respuesta"
   },
   "logFailed": {
-    "message": "El prompt n.º {0} falló: {1} — se abandona tras {2} intento(s)."
+    "message": "Prompt {0}: fallido — {1} ({2}/{3} reintentos)"
+  },
+  "logDiagnostics": {
+    "message": "Página: {0}"
+  },
+  "logReturningToChat": {
+    "message": "Volviendo al chat del prompt"
+  },
+  "logTabActivated": {
+    "message": "Pestaña de ChatGPT traída al frente"
+  },
+  "logTabHidden": {
+    "message": "La pestaña de ChatGPT está oculta. Si los prompts se atascan, usa el modo en segundo plano o deja la pestaña visible."
   },
   "logDownloaded": {
     "message": "Guardado {0}"
@@ -233,100 +404,16 @@
   "logDownloadFailed": {
     "message": "No se pudo guardar {0}: {1}"
   },
-  "logFatal": {
-    "message": "Ejecución detenida: {0}"
+  "logBackgroundOn": {
+    "message": "Modo en segundo plano activado"
   },
-  "logAdded": {
-    "message": "Se añadieron {0} prompt(s) a la cola."
+  "logBackgroundOff": {
+    "message": "Modo en segundo plano desactivado"
   },
-  "logNoPrompts": {
-    "message": "No se encontraron prompts."
-  },
-  "singleChat": {
-    "message": "Mantener todo en un solo chat"
-  },
-  "singleChatHint": {
-    "message": "Todos los prompts de la cola van a una sola conversación de ChatGPT. Si la ejecución se interrumpe, la extensión vuelve a ese chat y continúa donde se detuvo."
-  },
-  "refusalRetries": {
-    "message": "Reintentos si es rechazado"
-  },
-  "sessionChat": {
-    "message": "Chat de la sesión:"
-  },
-  "sessionNone": {
-    "message": "empieza con el primer prompt"
-  },
-  "newSessionChat": {
-    "message": "Nuevo chat de sesión"
-  },
-  "status_refused": {
-    "message": "Rechazado"
-  },
-  "logRefused": {
-    "message": "ChatGPT rechazó el prompt n.º {0} — reintentando ({1}/{2})."
-  },
-  "logRefusedSkip": {
-    "message": "ChatGPT rechazó el prompt n.º {0} — omitido, pasando al siguiente prompt."
-  },
-  "logResumed": {
-    "message": "El prompt n.º {0} ya se había enviado antes de la interrupción — se recogió su respuesta sin reenviarlo."
-  },
-  "logSessionLost": {
-    "message": "No se pudo abrir el chat de la sesión — se continúa en un chat nuevo."
-  },
-  "logReturningToChat": {
-    "message": "Volviendo al chat de la sesión…"
-  },
-  "logNewSession": {
-    "message": "La próxima ejecución empezará un nuevo chat de sesión."
-  },
-  "logTimings": {
-    "message": "Prompt n.º {0}: chat listo en {1} s, respuesta en {2} s."
-  },
-  "keepTabActive": {
-    "message": "Mantener la pestaña de ChatGPT al frente durante la ejecución"
-  },
-  "keepTabActiveHint": {
-    "message": "Los navegadores ralentizan las pestañas en segundo plano, lo que puede detener las respuestas de ChatGPT. La pestaña se trae al frente de su ventana antes de cada prompt (el foco no cambia)."
-  },
-  "copyDiagnostics": {
-    "message": "Copiar diagnóstico"
-  },
-  "copyDiagnosticsHint": {
-    "message": "¿Algo no funciona? Abre ChatGPT, pulsa Copiar diagnóstico y pega el resultado en tu informe."
-  },
-  "openInWindow": {
-    "message": "Abrir en una ventana aparte"
-  },
-  "logSent": {
-    "message": "Prompt #{0}: enviado, esperando la respuesta…"
-  },
-  "logWaitingForImage": {
-    "message": "Prompt #{0}: esperando la imagen…"
-  },
-  "logTabHidden": {
-    "message": "La pestaña de ChatGPT está oculta (¿ventana minimizada?). Mantén su ventana visible o las respuestas pueden detenerse."
-  },
-  "logTabActivated": {
-    "message": "Se trajo la pestaña de ChatGPT al frente."
-  },
-  "logAlreadyRunning": {
-    "message": "Otro panel ya está ejecutando la cola. Usa ese o detenlo primero."
-  },
-  "logNeedHostAccess": {
-    "message": "La extensión necesita acceso a chatgpt.com para funcionar. Pulsa Iniciar de nuevo y permítelo."
-  },
-  "logDiagnostics": {
-    "message": "Revisión de la página: {0}"
+  "logBackgroundFailed": {
+    "message": "No se inició el modo en segundo plano: {0}. Prueba a abrir el panel en su propia ventana (clic derecho en el botón de la barra)."
   },
   "logDiagnosticsCopied": {
-    "message": "Diagnóstico copiado al portapapeles. Pégalo en tu informe."
-  },
-  "confirmClearAgain": {
-    "message": "Haz clic otra vez para vaciar"
-  },
-  "logNudged": {
-    "message": "Prompt n.º {0}: ChatGPT respondió sin imagen — se le pidió una vez que genere la imagen ahora."
+    "message": "Diagnóstico copiado al portapapeles"
   }
 }

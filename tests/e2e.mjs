@@ -1,38 +1,26 @@
-// End-to-end test with Playwright + Chromium, with https://chatgpt.com routed to tests/mock-chatgpt.html.
-// Everything runs against both page layouts the mock can show: the original one and the Sept 2026
-// redesign (no test ids or role markers, localized or unknown button labels, Send/Stop in one slot,
-// silent "Thinking" before each reply) that made the queue stall after the first prompt.
-//  1. content/driver.js on its own: text, image, attachment, error, policy refusal, resume without resend,
-//     several prompts in a row, and never clicking Stop or Voice as Send
-//  2. the real unpacked extension driven from its side panel:
-//     - text queue with retry + failure, downloads, language switching
-//     - image queue kept in ONE chat, with a refused prompt retried then skipped
-//     - interruption (ChatGPT tab navigated away mid-reply) -> returns to the session chat, no resend
-//     - side panel reopened mid-reply -> resumes in the same chat, no resend
-//     - ChatGPT tab in the background when a prompt starts -> brought to the front
+// End-to-end tests with Playwright + Chromium. https://chatgpt.com is served by tests/fake-chatgpt.mjs
+// (the backend) and tests/mock-chatgpt.html (the page), which send prompts and stream replies the
+// way the real site does.
+//  1. The content scripts on their own (net-hook + agent): text, several in a row, images (also one
+//     drawn after the reply stream has closed), a reply handed off after the stream, attachments,
+//     errors, rate limit, refusal, question -> one nudge, resume without resending, and the
+//     page-watching fallback when the conversation can't be read.
+//  2. The real unpacked extension driven from its side panel: the queue gets past the first prompt
+//     in every mode, retries, downloads, concurrent tabs, Concat, interruption, Stop/Run, Fix Error,
+//     model choice, languages, diagnostics.
 // Run: npm run test:e2e   (needs the `playwright` package; set CHROMIUM_PATH to override the browser)
 import { execSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
+import { FakeChatGPT, NUDGE } from './fake-chatgpt.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const mockHtml = readFileSync(join(root, 'tests/mock-chatgpt.html'), 'utf8');
-const CHAT_ROUTE = /^https:\/\/(chatgpt\.com|chat\.openai\.com)\/.*/;
-const mockRoute = (route) => route.fulfill({ status: 200, contentType: 'text/html', body: mockHtml });
 const OTHER_ROUTE = /^https:\/\/example\.org\/.*/;
 const otherRoute = (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Other</title><p>Another site</p>' });
-// The mock's Stop control in either layout (test-only hooks; the extension doesn't use these).
-const STOP_SELECTOR = '[data-testid="stop-button"], button[data-mode="stop"]';
-const LAYOUTS = [
-  { name: 'legacy layout', query: '?ui=legacy' },
-  { name: '2026 layout, Turkish labels', query: '?ui=2026&lang=tr' },
-];
-
-/** Width of a PNG given as a data: URL (from its IHDR chunk). */
-const pngWidth = (dataUrl) => Buffer.from(dataUrl.split(',')[1], 'base64').readUInt32BE(16);
+const debug = (...a) => process.env.E2E_DEBUG && console.log(...a);
 
 async function loadPlaywright() {
   try {
@@ -45,140 +33,134 @@ async function loadPlaywright() {
 
 const { chromium } = await loadPlaywright();
 const launchOpts = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
+const pngWidth = (dataUrl) => Buffer.from(dataUrl.split(',')[1], 'base64').readUInt32BE(16);
 
-async function testDriver({ name, query, thinkMs = 1500 }) {
+// ---- 1. Content scripts on their own ------------------------------------------------------------
+
+async function testAgent() {
   const browser = await chromium.launch(launchOpts);
   const context = await browser.newContext();
-  await context.route(CHAT_ROUTE, mockRoute);
+  const fake = new FakeChatGPT();
+  await fake.install(context);
   const page = await context.newPage();
   const inject = async () => {
-    await page.addScriptTag({ path: join(root, 'content/selectors.js') });
-    await page.addScriptTag({ path: join(root, 'content/driver.js') });
+    for (const f of ['content/sse.js', 'content/net-hook.js', 'content/selectors.js', 'content/conversation.js', 'content/agent.js']) {
+      await page.addScriptTag({ path: join(root, f) });
+    }
   };
-  await page.goto(`https://chatgpt.com/${query}`);
-  await page.evaluate((ms) => localStorage.setItem('thinkMs', String(ms)), thinkMs);
-  await page.reload();
+  await page.goto('https://chatgpt.com/');
   await inject();
 
-  const run = (opts) => page.evaluate((o) => globalThis.__CGA_DRIVER.run(o).catch((e) => ({ error: e.message })), { stableMs: 400, ...opts });
+  /** Run one job to the end, the way the panel does: start it, then poll. */
+  const run = (opts) => page.evaluate(async (o) => {
+    const A = globalThis.__CGA_AGENT;
+    const job = A.createJob({ id: crypto.randomUUID(), timeoutMs: 120000, ...o });
+    A.startJob(job);
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 400));
+      await A.tick(job);
+      const s = A.snapshot(job);
+      if (['done', 'error', 'refused'].includes(s.state)) return { ...s, images: (s.images || []).map((i) => i.slice(0, 40000)) };
+    }
+  }, opts);
 
   const text = await run({ prompt: 'hello there\nsecond line' });
-  assert.match(text.text, /^Echo: hello there/);
-  assert.deepEqual(text.images, []);
-  assert.match(text.url, /\/c\/mock-/);
+  assert.equal(text.state, 'done', JSON.stringify(text));
+  assert.equal(text.text, 'Echo: hello there\nsecond line');
+  assert.equal(text.mode, 'net');
+  assert.match(page.url(), /\/c\/68e1aaaa-/);
 
   // Several prompts in a row: each reply is collected and the next prompt goes out (the reported bug).
   for (const n of [1, 2, 3]) {
     const r = await run({ prompt: `follow-up number ${n}` });
-    assert.equal(r.text, `Echo: follow-up number ${n}`, `${name}: reply ${n}`);
+    assert.equal(r.text, `Echo: follow-up number ${n}`, `reply ${n}: ${JSON.stringify(r)}`);
   }
 
   const img = await run({ prompt: 'draw an image of a cat', expectImages: true });
+  assert.equal(img.state, 'done', JSON.stringify(img));
   assert.equal(img.images.length, 1);
-  assert.match(img.images[0], /^data:image\/png;base64,/);
+  assert.equal(pngWidth(img.images[0]), 256);
 
-  // An image no selector knows (data: URL, Turkish alt text) is still found: it's new on the page.
-  const plain = await run({ prompt: 'plain image of a cat', expectImages: true });
-  assert.equal(plain.images?.length, 1, `${name}: plain image (${plain.error || ''})`);
-  assert.equal(pngWidth(plain.images[0]), 512);
+  // The stream closes while the image is still being drawn; it lands 5 s later.
+  const t0 = Date.now();
+  const late = await run({ prompt: 'an async image of a boat', expectImages: true });
+  assert.equal(late.state, 'done', JSON.stringify(late));
+  assert.equal(late.images.length, 1);
+  assert.ok(Date.now() - t0 >= 5000, 'waited for the image after the stream closed');
 
-  // A blurred preview shown after Stop is gone is not the result: wait for the final image.
-  const blurry = await run({ prompt: 'blurry image of a dog', expectImages: true });
-  assert.equal(blurry.images?.length, 1, `${name}: blurry image (${blurry.error || ''})`);
-  assert.equal(pngWidth(blurry.images[0]), 512, `${name}: got the blurred preview instead of the final image`);
-
-  // Batch prompts that open the same way each get their own reply.
-  const opening = 'A highly detailed photorealistic picture of a quiet harbor town at dawn, soft light, ';
-  for (const n of ['one', 'two']) {
-    const r = await run({ prompt: `${opening}variant ${n}` });
-    assert.equal(r.text, `Echo: ${opening}variant ${n}`, `${name}: shared opening, variant ${n}`);
-  }
+  // The stream hands off at once; the reply appears in the conversation later.
+  const handoff = await run({ prompt: 'handoff please' });
+  assert.equal(handoff.text, 'Echo: handoff please', JSON.stringify(handoff));
 
   const dot = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  // The page always shows a spinner and a progress bar outside the composer: not an upload.
   const attachStart = Date.now();
   const withFile = await run({ prompt: 'describe', files: [{ name: 'alice.png', dataUrl: dot }] });
-  assert.match(withFile.text, /\[files: alice\.png\]/);
-  assert.ok(Date.now() - attachStart < 15000, `${name}: attaching took ${Date.now() - attachStart} ms (page spinner mistaken for an upload?)`);
-
-  // ChatGPT leaves a streaming marker on the finished reply: the image still counts once it has
-  // sat unchanged, and the next prompt still goes out.
-  const sticky = await run({ prompt: 'sticky image of a fish', expectImages: true, imageSettleMs: 2000 });
-  assert.equal(sticky.images?.length, 1, `${name}: sticky image (${sticky.error || ''})`);
+  assert.equal(withFile.text, 'Echo: describe [files: alice.png]');
+  assert.ok(Date.now() - attachStart < 15000, `attaching took ${Date.now() - attachStart} ms (page spinner taken for an upload?)`);
 
   const failed = await run({ prompt: 'please fail' });
+  assert.equal(failed.state, 'error');
+  assert.equal(failed.stage, 'chatgpt');
   assert.match(failed.error, /something went wrong/i);
 
+  const limited = await run({ prompt: 'rate limit me' });
+  assert.equal(limited.state, 'error');
+  assert.equal(limited.stage, 'chatgpt');
+  assert.match(limited.error, /reached our limit/);
+
   const refused = await run({ prompt: 'a forbidden image', expectImages: true });
-  assert.equal(refused.refused, true);
-  assert.match(refused.error, /Refused by ChatGPT/);
-
-  // Resume: the last prompt is already in the chat (page reloaded) -> collect, don't resend.
-  await page.reload();
-  await inject();
-  await page.waitForSelector('main article:nth-child(2)');
-  const sentBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('sent')).length);
-  const resumed = await run({ prompt: 'a forbidden image', expectImages: true, resumeIfSent: true });
-  assert.equal(resumed.refused, true);
-  const again = await run({ prompt: 'a forbidden image', expectImages: true, resumeIfSent: false });
-  assert.equal(again.refused, true);
-  const sentAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('sent')).length);
-  assert.equal(sentAfter - sentBefore, 1, 'resumeIfSent must not resend; a normal run must');
-
-  const sentCount = () => page.evaluate(() => JSON.parse(localStorage.getItem('sent')).length);
+  assert.equal(refused.state, 'refused', JSON.stringify(refused));
 
   // ChatGPT asks a question instead of drawing: one follow-up in the same chat, then the image.
-  const beforeAsk = await sentCount();
+  const before = fake.sent.length;
   const asked = await run({ prompt: 'ask first: an image of a fox', expectImages: true });
-  assert.equal(asked.images?.length, 1, `${name}: image after the nudge (${asked.error || ''})`);
+  assert.equal(asked.state, 'done', JSON.stringify(asked));
+  assert.equal(asked.images.length, 1);
   assert.equal(asked.nudged, true);
-  assert.equal(await sentCount() - beforeAsk, 2, `${name}: the prompt and exactly one nudge`);
+  assert.deepEqual(fake.sent.slice(before), ['ask first: an image of a fox', NUDGE]);
 
-  // The image is still on its way when the time limit hits: a 'reply' error (pick it up next
-  // time), never a 'chatgpt' one (which would send the prompt again).
-  await page.evaluate(() => localStorage.setItem('lateImageMs', '15000'));
-  const beforeLate = await sentCount();
-  const late = await page.evaluate((o) => globalThis.__CGA_DRIVER.run(o).catch((e) => ({ error: e.message, stage: e.stage })),
-    { prompt: 'a late image of a boat', expectImages: true, stableMs: 400, timeoutMs: 8000, imageWaitMs: 1000 });
-  assert.equal(late.stage, 'reply', `${name}: late image -> ${JSON.stringify(late)}`);
-  const lateResumed = await run({ prompt: 'a late image of a boat', expectImages: true, resumeIfSent: true });
-  assert.equal(lateResumed.images?.length, 1, `${name}: late image picked up on resume (${lateResumed.error || ''})`);
-  assert.equal(lateResumed.resumed, true);
-  assert.equal(await sentCount() - beforeLate, 1, `${name}: the late-image prompt was sent once`);
+  // Resume: the prompt went out, then the page was reloaded -> follow its reply, don't resend.
+  const sentBefore = fake.sent.length;
+  await page.evaluate(() => {
+    const A = globalThis.__CGA_AGENT;
+    A.startJob(A.createJob({ id: 'x', prompt: 'slow resume test', timeoutMs: 120000 }));
+  });
+  await page.waitForFunction(() => location.pathname.startsWith('/c/') && document.querySelector('[data-testid="stop-button"]'));
+  await page.reload();
+  await inject();
+  const resumed = await run({ prompt: 'slow resume test', resume: true });
+  assert.equal(resumed.state, 'done', JSON.stringify(resumed));
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.text, 'Echo: slow resume test');
+  assert.equal(fake.sent.length - sentBefore, 1, 'resume must not send again');
+  const fresh = await run({ prompt: 'not sent yet', resume: true });
+  assert.equal(fresh.resumed, false);
+  assert.equal(fresh.text, 'Echo: not sent yet');
 
-  const sent = await page.evaluate(() => JSON.parse(localStorage.getItem('sent')));
-  assert.equal(new Set(sent).size, sent.length - 1, `${name}: only the deliberate resend is a duplicate: ${sent}`);
-  const misclicks = await page.evaluate(() => [localStorage.getItem('wrongClicks'), localStorage.getItem('stoppedReplies')]);
-  assert.deepEqual(misclicks, [null, null], `${name}: never clicked Voice/Dictation or Stop`);
+  // The conversation can't be read: watch the page instead.
+  fake.jsonOff = true;
+  const viaPage = await run({ prompt: 'page mode text' });
+  assert.equal(viaPage.state, 'done', JSON.stringify(viaPage));
+  assert.equal(viaPage.mode, 'page');
+  fake.jsonOff = false;
 
+  // Image download links fail: the picture is taken from the page.
+  fake.imageLinksOff = true;
+  const fromPage = await run({ prompt: 'image of a blue square', expectImages: true });
+  assert.equal(fromPage.state, 'done', JSON.stringify(fromPage));
+  assert.equal(fromPage.images.length, 1);
+  fake.imageLinksOff = false;
+
+  const sent = fake.prompts();
+  assert.equal(new Set(sent).size, sent.length, `no prompt sent twice: ${sent}`);
+  assert.deepEqual(await page.evaluate(() => [localStorage.getItem('wrongClicks'), localStorage.getItem('stoppedReplies')]), [null, null], 'never clicked Voice or Stop');
   await browser.close();
-  console.log(`ok - driver, ${name}: text, 3 in a row, image, unknown image, blurred preview, shared opening, files, leftover streaming marker, error, refusal, resume, question -> nudge, late image`);
+  console.log('ok - content scripts: text, 3 in a row, image, image after the stream, handoff, files, error, rate limit, refusal, question -> nudge, resume, page fallback, image from the page');
 }
 
-/** The driver sees what it needs even when it knows none of the button labels. */
-async function testDriverUnknownLabels() {
-  const browser = await chromium.launch(launchOpts);
-  const context = await browser.newContext();
-  await context.route(CHAT_ROUTE, mockRoute);
-  const page = await context.newPage();
-  await page.goto('https://chatgpt.com/?ui=2026&lang=xx');
-  await page.addScriptTag({ path: join(root, 'content/selectors.js') });
-  await page.addScriptTag({ path: join(root, 'content/driver.js') });
-  const run = (opts) => page.evaluate((o) => globalThis.__CGA_DRIVER.run(o).catch((e) => ({ error: e.message })), { stableMs: 400, ...opts });
-  const first = run({ prompt: 'unknown labels one' });
-  // While ChatGPT is "thinking", the slot is a Stop button known only by its square icon.
-  await page.waitForFunction(() => globalThis.__CGA_DRIVER.isGenerating());
-  const diag = await page.evaluate(() => globalThis.__CGA_DRIVER.diagnose());
-  assert.ok(diag.stop && diag.composer.found, `diagnostics: ${JSON.stringify(diag)}`);
-  assert.equal((await first).text, 'Echo: unknown labels one');
-  assert.equal((await run({ prompt: 'unknown labels two' })).text, 'Echo: unknown labels two');
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('sent'))), ['unknown labels one', 'unknown labels two']);
-  assert.equal(await page.evaluate(() => localStorage.getItem('wrongClicks')), null);
-  await browser.close();
-  console.log('ok - driver, 2026 layout with unknown labels: Stop found by its icon, Send by its type');
-}
+// ---- 2. The extension ----------------------------------------------------------------------------
 
-async function launchExtension(query = '') {
+async function launchExtension() {
   const userDataDir = mkdtempSync(join(tmpdir(), 'cga-e2e-'));
   const downloadsPath = mkdtempSync(join(tmpdir(), 'cga-dl-'));
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -187,21 +169,18 @@ async function launchExtension(query = '') {
     channel: process.env.CHROMIUM_PATH ? undefined : 'chromium', // full Chromium: headless shell can't load extensions
     acceptDownloads: true,
     downloadsPath,
-    viewport: { width: 420, height: 900 }, // roughly a side panel
+    viewport: { width: 420, height: 900 },
     args: [`--disable-extensions-except=${root}`, `--load-extension=${root}`],
   });
-  await context.route(CHAT_ROUTE, mockRoute);
+  const fake = new FakeChatGPT();
+  await fake.install(context);
   await context.route(OTHER_ROUTE, otherRoute);
-
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker');
   const extensionId = new URL(worker.url()).host;
 
-  // Open the (mocked) ChatGPT tab up front, as a user would. Tabs the extension creates itself
-  // bypass Playwright routing, so they would hit the real site.
+  // Open the ChatGPT tab up front, as a user would.
   const chat = await context.newPage();
-  await chat.goto(`https://chatgpt.com/${query}`);
-  await chat.evaluate(() => localStorage.setItem('thinkMs', '1500'));
   await chat.goto('https://chatgpt.com/');
 
   const panel = await context.newPage();
@@ -209,199 +188,217 @@ async function launchExtension(query = '') {
   panel.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()));
   panel.on('pageerror', (e) => consoleErrors.push(e.message));
   await panel.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-  await panel.waitForSelector('#addPrompts:not(:empty)');
-  return { context, chat, panel, consoleErrors, extensionId };
+  await panel.waitForSelector('#runBtn:not(:empty)');
+  return { context, chat, panel, fake, consoleErrors };
 }
 
-/** Wait until the runner is idle and the queue has the given status counts. */
-const idle = (panel, want) => panel.waitForFunction(
+const idle = (panel, want, timeout = 240000) => panel.waitForFunction(
   (w) => document.querySelector('#runnerStatus').textContent === 'Idle'
     && Object.entries(w).every(([status, n]) => document.querySelectorAll(`.qi.${status}`).length === n),
   want,
-  { timeout: 240000 },
+  { timeout },
 );
 
 async function setSetting(panel, key, value) {
-  const el = panel.locator(`[data-setting="${key}"]`);
+  const el = panel.locator(`[data-setting="${key}"]:visible`).first();
   if (typeof value === 'boolean') await el.setChecked(value);
+  else if (await el.evaluate((e) => e.tagName === 'SELECT')) await el.selectOption(String(value));
   else await el.fill(String(value));
   await el.dispatchEvent('change');
 }
 
 async function clearQueue(panel) {
-  // Two clicks, no browser dialog (dialogs don't reliably show in side panels).
-  let dialog = false;
-  const onDialog = (d) => { dialog = true; d.dismiss(); };
-  panel.on('dialog', onDialog);
+  if (!(await panel.locator('.qi').count())) return;
   await panel.click('#clearBtn');
   await panel.waitForFunction(() => document.querySelector('#clearBtn').classList.contains('danger'));
-  assert.equal(await panel.locator('.qi').count() > 0, true, 'first click only arms the button');
   await panel.click('#clearBtn');
   await panel.waitForFunction(() => !document.querySelectorAll('.qi').length);
-  panel.off('dialog', onDialog);
-  assert.equal(dialog, false, 'Clear queue must not use a browser dialog');
 }
 
-async function addPrompts(panel, text) {
-  await panel.fill('#promptInput', text);
-  await panel.click('#addPrompts');
+async function run(panel, prompts, mode = 'text') {
+  await panel.click(`#modeTabs [data-mode="${mode}"]`);
+  await panel.fill('#promptInput', prompts.join('\n\n'));
+  await panel.click('#runBtn');
 }
 
-const pageLoads = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('pageLoads') || '0'));
-
-/** Seconds the runner logged for "chat ready" on the given prompt number. */
-async function chatReadySecs(panel, n) {
-  const log = await panel.locator('#log').textContent();
-  const m = new RegExp(`Prompt #${n}: chat ready in ([\\d.]+)s`).exec(log);
-  assert.ok(m, `no timing logged for prompt #${n}`);
-  return Number(m[1]);
-}
-
-/** Start the queue and check the first prompt reuses the page (no reload) and gets going quickly. */
-async function startAndCheckFastFirstPrompt(panel, chat, label) {
-  const loadsBefore = await pageLoads(chat);
-  await panel.click('#startBtn');
-  await panel.waitForFunction(() => document.querySelectorAll('.qi.completed, .qi.refused, .qi.failed').length >= 1, null, { timeout: 60000 });
-  assert.equal(await pageLoads(chat), loadsBefore, `${label}: first prompt must not reload ChatGPT`);
-  const secs = await chatReadySecs(panel, 1);
-  assert.ok(secs < 5, `${label}: chat ready took ${secs}s`);
-}
-
-const sentPrompts = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('sent') || '[]'));
-const conversations = (chat) => chat.evaluate(() => JSON.parse(localStorage.getItem('conversations') || '[]'));
 const queueState = (panel) => panel.evaluate(async () => (await chrome.storage.local.get('cga_queue')).cga_queue);
-const sessionUrl = (panel) => panel.evaluate(async () => (await chrome.storage.local.get('cga_session')).cga_session?.chatUrl);
+const logText = (panel) => panel.locator('#log').textContent();
+const downloads = (panel) => panel.evaluate(async () => (await chrome.downloads.search({})).length);
 
-async function testExtension({ name, query }) {
-  const { context, chat, panel, consoleErrors } = await launchExtension(query);
-  const debugLog = async () => process.env.E2E_DEBUG && console.log(await panel.locator('#log li').allTextContents());
+async function testExtension() {
+  const { context, chat, panel, fake, consoleErrors } = await launchExtension();
+  const dumpLog = async () => debug((await panel.locator('#log li').allTextContents()).reverse().join('\n'));
 
-  // Language switching
+  // Languages
+  await panel.click('#tabSetting');
   await panel.selectOption('#language', 'vi');
-  await panel.waitForFunction(() => document.querySelector('#addPrompts').textContent === 'Thêm vào hàng đợi');
+  await panel.waitForFunction(() => document.querySelector('#runBtn').textContent === 'Chạy');
   await panel.selectOption('#language', 'en');
-  await panel.waitForFunction(() => document.querySelector('#addPrompts').textContent === 'Add to queue');
+  await panel.waitForFunction(() => document.querySelector('#runBtn').textContent === 'Run');
+  for (const [k, v] of [['minDelay', 0], ['maxDelay', 1], ['maxRetries', 1]]) await setSetting(panel, k, v);
+  await panel.click('#tabControl');
+  await setSetting(panel, 'folder', 'e2e');
 
-  // Fast settings for the test
-  await panel.click('#settingsCard summary');
-  for (const [k, v] of [['minDelay', 0], ['maxDelay', 1], ['maxRetries', 1], ['project', 'e2e']]) await setSetting(panel, k, v);
-  assert.equal(await panel.locator('[data-setting="singleChat"]').isChecked(), true, 'one chat is the default');
-  assert.equal(await panel.locator('[data-setting="newChatPerPrompt"]').isDisabled(), true);
-
-  // --- 1. Text queue: retry + failure + downloads ---------------------------------------------
-  await addPrompts(panel, 'first prompt\nsecond prompt\nthis one will fail');
-  assert.equal(await panel.locator('.qi').count(), 3);
-  await startAndCheckFastFirstPrompt(panel, chat, 'blank tab');
-  await idle(panel, { completed: 2, failed: 1 });
-  await debugLog();
-  assert.match(await panel.locator('.qi.failed .qi-retries').textContent(), /1\/1/);
-  assert.equal(await panel.locator('.qi.completed .qi-retries').first().textContent(), '');
-  // Playwright stores downloads under GUID names, so check the count and the requested paths in the log.
-  assert.equal(await panel.evaluate(async () => (await chrome.downloads.search({})).length), 2);
-  const log1 = await panel.locator('#log').textContent();
-  assert.match(log1, /Saved ChatGPT-Automation\/e2e\/001-first-prompt\.md/);
-  assert.match(log1, /Saved ChatGPT-Automation\/e2e\/002-second-prompt\.md/);
-  assert.equal((await conversations(chat)).length, 1, 'text run stayed in one chat');
-  console.log(`ok - extension, ${name}: text queue with retry + failure, downloads, one chat, fast first prompt`);
-
-  // --- 2. Images in one chat, refused prompt retried once then skipped -----------------------
-  await clearQueue(panel); // also forgets the session chat
-  await panel.click('[data-mode="textToImage"]');
-  await addPrompts(panel, 'image of a red square\nforbidden image of something\nimage of a blue square\nask first: an image of a hat\nsticky image of a green square\nimage of a yellow square');
-  await startAndCheckFastFirstPrompt(panel, chat, 'tab inside a conversation');
-  await idle(panel, { completed: 5, refused: 1 });
-  await debugLog();
+  // --- 1. Five text prompts: the queue gets past the first one and finishes all of them -------
+  const five = ['first prompt', 'second prompt', 'third prompt', 'fourth prompt', 'fifth prompt'];
+  await run(panel, five);
+  await idle(panel, { completed: 5 });
+  await dumpLog();
   let q = await queueState(panel);
-  assert.equal(q[1].status, 'refused');
-  assert.equal(q[1].refusals, 2, 'refused prompt was retried once before skipping');
-  assert.equal(q[2].status, 'completed', 'queue moved on after the refusal');
-  const chat2 = await sessionUrl(panel);
-  assert.ok(q.every((i) => i.chatUrl === chat2), `all prompts in the session chat: ${q.map((i) => i.chatUrl)}`);
-  assert.equal((await conversations(chat)).length, 2, 'image run used exactly one new chat');
-  assert.match(await panel.locator('#log').textContent(), /refused by ChatGPT — skipped/);
-  assert.equal(q[3].imageCount, 1, 'question answered with a nudge, then the image');
-  assert.match(await panel.locator('#log').textContent(), /Prompt #4: ChatGPT answered without an image/);
-  assert.equal((await sentPrompts(chat)).filter((p) => p.startsWith('ask first')).length, 1, 'question prompt not resent');
-  assert.equal(q[4].imageCount, 1, 'image with a leftover streaming marker completed');
-  assert.equal(q[5].imageCount, 1, 'the prompt after it was sent and completed');
-  const sent2 = await sentPrompts(chat);
-  for (const p of ['sticky image', 'image of a yellow']) assert.equal(sent2.filter((x) => x.startsWith(p)).length, 1, `${p} sent once`);
-  assert.equal(await panel.locator('#sessionLink').isVisible(), true);
-  console.log(`ok - extension, ${name}: image queue in one chat, refused prompt retried then skipped, question -> one nudge, leftover streaming marker`);
+  assert.deepEqual(q.map((i) => i.output), five.map((p) => `Echo: ${p}`));
+  assert.deepEqual(fake.prompts(), five, 'each sent once, in order');
+  assert.equal(await downloads(panel), 5);
+  let log = await logText(panel);
+  assert.match(log, /Saved e2e\/001-first-prompt\.md/);
+  assert.match(log, /Saved e2e\/005-fifth-prompt\.md/);
+  assert.match(log, /Prompt #5: completed in [\d.]+s \(network\)/);
+  assert.equal(new Set(q.map((i) => i.chatUrl)).size, 5, 'New Chat for every prompt');
+  console.log('ok - extension: 5 text prompts in a row, each in a new chat, downloads');
 
-  // --- 3. Interruption: ChatGPT tab navigated away mid-reply (first prompt of a new session) --
+  // --- 2. Failure with retry, then the queue moves on ---------------------------------------------
   await clearQueue(panel);
-  await addPrompts(panel, 'slow image number one\nimage number two');
-  await panel.click('#startBtn');
-  await chat.waitForSelector(STOP_SELECTOR);
-  await chat.waitForTimeout(1500);
-  await chat.goto('https://chatgpt.com/'); // interrupt: user wanders off to a new chat
-  await idle(panel, { completed: 2 });
-  await debugLog();
+  fake.sent.length = 0;
+  await run(panel, ['please fail', 'after the failure']);
+  await idle(panel, { completed: 1, failed: 1 });
   q = await queueState(panel);
-  const chat3 = await sessionUrl(panel);
-  assert.ok(q.every((i) => i.chatUrl === chat3), 'both prompts ended up in the session chat');
-  assert.equal(new URL(chat.url()).pathname, new URL(chat3).pathname, 'tab was brought back to the session chat');
-  const sent3 = await sentPrompts(chat);
-  assert.equal(q[0].retries || 0, 0, 'an interruption does not use up normal retries');
-  assert.equal(sent3.filter((p) => p.startsWith('slow image number one')).length, 1, 'interrupted prompt was not resent');
-  const log3 = await panel.locator('#log').textContent();
-  assert.match(log3, /Returning to the session chat/);
-  assert.match(log3, /already sent before the interruption/);
-  console.log(`ok - extension, ${name}: interruption -> back to the session chat, no resend`);
+  assert.equal(q[0].status, 'failed');
+  assert.equal(q[0].retries, 2);
+  assert.equal(q[1].output, 'Echo: after the failure');
+  assert.match(await panel.locator('.qi.failed .qi-extra').textContent(), /retry 2\/1/);
+  console.log('ok - extension: failure retried, then marked failed, queue moved on');
 
-  // --- 4. Side panel closed/reopened mid-reply -------------------------------------------------
-  await addPrompts(panel, 'slow image number three');
-  await panel.click('#startBtn');
-  await chat.waitForSelector(STOP_SELECTOR);
-  await chat.waitForTimeout(1500);
-  await panel.reload(); // panel closed mid-run
-  await panel.waitForSelector('#addPrompts:not(:empty)');
-  assert.equal(await panel.locator('.qi.queued').count(), 1);
-  await panel.click('#startBtn');
+  // --- 3. Text to Image, including an image drawn after the stream closed and a refusal --------
+  await clearQueue(panel);
+  fake.sent.length = 0;
+  const before = await downloads(panel);
+  await run(panel, ['image of a red square', 'an async image of a boat', 'forbidden image of something', 'ask first: an image of a hat', 'image of a blue square'], 'textToImage');
+  await idle(panel, { completed: 4, refused: 1 });
+  await dumpLog();
+  q = await queueState(panel);
+  assert.deepEqual(q.map((i) => i.status), ['completed', 'completed', 'refused', 'completed', 'completed']);
+  assert.ok(q.filter((i) => i.status === 'completed').every((i) => i.imageCount === 1));
+  assert.equal(q[2].refusals, 2, 'refused prompt was retried once before skipping');
+  assert.equal(await downloads(panel) - before, 4, 'four images saved');
+  log = await logText(panel);
+  assert.match(log, /Saved e2e\/002-an-async-image-of-a-boat\.png/);
+  assert.match(log, /Prompt #4: ChatGPT answered without an image/);
+  assert.match(log, /refused by ChatGPT — skipped/);
+  assert.equal(fake.sent.filter((p) => p.startsWith('ask first')).length, 1, 'question prompt not resent');
+  console.log('ok - extension: Text to Image, image after the stream, refusal skipped, question -> one nudge');
+
+  // --- 4. Concat keeps the next prompt in the same chat; model choice is applied --------------
+  await clearQueue(panel);
+  await panel.click('#tabSetting');
+  await setSetting(panel, 'defaultPromptMode', 'concat');
+  await setSetting(panel, 'textModel', 'gpt-5');
+  await panel.click('#tabControl');
+  fake.models.length = 0;
+  await run(panel, ['concat one', 'concat two', 'concat three']);
   await idle(panel, { completed: 3 });
-  await debugLog();
   q = await queueState(panel);
-  assert.equal(q[2].chatUrl, chat3, 'resumed in the same session chat');
-  assert.equal((await sentPrompts(chat)).filter((p) => p.startsWith('slow image number three')).length, 1, 'not resent');
-  console.log(`ok - extension, ${name}: panel reopened mid-run -> resumed, no resend`);
+  assert.equal(new Set(q.map((i) => i.chatUrl)).size, 1, `one chat for the Concat run: ${q.map((i) => i.chatUrl)}`);
+  assert.deepEqual(fake.models, ['gpt-5', 'gpt-5', 'gpt-5'], 'model from ?model= used');
+  await panel.click('#tabSetting');
+  await setSetting(panel, 'defaultPromptMode', 'new');
+  await setSetting(panel, 'textModel', '');
+  await panel.click('#tabControl');
+  console.log('ok - extension: Concat keeps one chat, Text Model applied');
 
-  // --- 5. ChatGPT tab in the background: brought to the front before the prompt ----------------
+  // --- 5. Interruption: the ChatGPT tab leaves mid-reply -> back to its chat, not resent --------
   await clearQueue(panel);
-  await panel.click('[data-mode="text"]');
+  fake.sent.length = 0;
+  await run(panel, ['slow interrupted prompt', 'after the interruption']);
+  await chat.waitForFunction(() => location.pathname.startsWith('/c/') && document.querySelector('[data-testid="stop-button"]'));
+  await chat.waitForTimeout(1000);
+  await chat.goto('https://example.org/');
+  await idle(panel, { completed: 2 });
+  await dumpLog();
+  q = await queueState(panel);
+  assert.equal(q[0].output, 'Echo: slow interrupted prompt');
+  assert.equal(q[0].retries || 0, 0, 'an interruption does not use up retries');
+  assert.deepEqual(fake.sent, ['slow interrupted prompt', 'after the interruption'], 'interrupted prompt not resent');
+  log = await logText(panel);
+  assert.match(log, /Returning to the prompt's chat/);
+  assert.match(log, /already sent before the interruption/);
+  console.log('ok - extension: interruption -> back to the chat, reply collected, no resend');
+
+  // --- 6. Stop mid-reply, then Run: picks up the same reply ------------------------------------
+  await clearQueue(panel);
+  fake.sent.length = 0;
+  await run(panel, ['slow stopped prompt']);
+  await chat.waitForFunction(() => location.pathname.startsWith('/c/') && document.querySelector('[data-testid="stop-button"]'));
+  await panel.click('#stopBtn');
+  await idle(panel, { queued: 1 });
+  await panel.click('#runBtn');
+  await idle(panel, { completed: 1 });
+  q = await queueState(panel);
+  assert.equal(q[0].output, 'Echo: slow stopped prompt');
+  assert.deepEqual(fake.sent, ['slow stopped prompt'], 'Run after Stop collects the reply, no resend');
+  console.log('ok - extension: Stop then Run collects the same reply');
+
+  // --- 6b. The panel closes mid-reply; reopened, Run collects that reply -----------------------
+  await clearQueue(panel);
+  fake.sent.length = 0;
+  await run(panel, ['slow panel reload prompt']);
+  await panel.waitForFunction(async () => (await chrome.storage.local.get('cga_queue')).cga_queue?.[0]?.chatUrl);
+  await panel.reload();
+  await panel.waitForSelector('#runBtn:not(:empty)');
+  assert.equal(await panel.locator('.qi.queued').count(), 1);
+  await panel.click('#runBtn');
+  await idle(panel, { completed: 1 });
+  assert.equal((await queueState(panel))[0].output, 'Echo: slow panel reload prompt');
+  assert.deepEqual(fake.sent, ['slow panel reload prompt'], 'not resent after the panel reopened');
+  console.log('ok - extension: panel reopened mid-reply -> reply collected, no resend');
+
+  // --- 7. Fix Error on a running prompt: it runs again and completes -----------------------------
+  await clearQueue(panel);
+  await run(panel, ['slow fixed prompt', 'after fix']);
+  await chat.waitForFunction(() => document.querySelector('[data-testid="stop-button"]'));
+  await panel.click('#fixBtn');
+  await idle(panel, { completed: 2 });
+  assert.match(await logText(panel), /Prompt #1 will run again/);
+  console.log('ok - extension: Fix Error re-runs the stuck prompt');
+
+  // --- 8. Two concurrent prompts in two tabs, with the ChatGPT tabs in the background -----------
+  await clearQueue(panel);
+  fake.sent.length = 0;
+  const chat2 = await context.newPage();
+  await chat2.goto('https://chatgpt.com/');
   const other = await context.newPage();
   await other.goto('https://example.org/');
   await other.bringToFront();
-  const chatActive = () => panel.evaluate(async () => (await chrome.tabs.query({ url: 'https://chatgpt.com/*' }))[0]?.active);
-  assert.equal(await chatActive(), false, 'ChatGPT tab starts in the background');
-  await addPrompts(panel, 'background one\nbackground two\nbackground three');
-  await panel.click('#startBtn');
-  await idle(panel, { completed: 3 });
-  await debugLog();
-  assert.equal(await chatActive(), true, 'ChatGPT tab was brought to the front');
-  const log5 = await panel.locator('#log').textContent();
-  assert.match(log5, /Brought the ChatGPT tab to the front/);
-  assert.match(log5, /Prompt #3: sent, waiting for the reply/);
+  await panel.click('#tabSetting');
+  await setSetting(panel, 'concurrency', 2);
+  await setSetting(panel, 'keepTabActive', false);
+  await panel.click('#tabControl');
+  const t0 = Date.now();
+  await run(panel, ['parallel a', 'parallel b', 'parallel c', 'parallel d']);
+  await panel.waitForFunction(() => /Running \(2\)/.test(document.querySelector('#runnerStatus').textContent), null, { timeout: 30000 });
+  await idle(panel, { completed: 4 });
   q = await queueState(panel);
-  assert.deepEqual(q.map((i) => i.output), ['Echo: background one', 'Echo: background two', 'Echo: background three']);
-  const sent5 = (await sentPrompts(chat)).filter((p) => p.startsWith('background'));
-  assert.deepEqual(sent5, ['background one', 'background two', 'background three'], `${name}: each sent once, in order`);
-  assert.equal(await chat.evaluate(() => localStorage.getItem('wrongClicks')), null, 'never clicked Voice/Dictation');
+  assert.deepEqual(q.map((i) => i.output), ['a', 'b', 'c', 'd'].map((x) => `Echo: parallel ${x}`));
+  assert.deepEqual([...fake.sent].sort(), ['parallel a', 'parallel b', 'parallel c', 'parallel d']);
+  debug(`concurrent run took ${Date.now() - t0} ms`);
+  await panel.click('#tabSetting');
+  await setSetting(panel, 'concurrency', 1);
+  await panel.click('#tabControl');
   await other.close();
-  console.log(`ok - extension, ${name}: background ChatGPT tab brought to the front, 3 prompts in order, none twice`);
+  await chat2.close();
+  console.log('ok - extension: 2 concurrent prompts in two tabs');
 
-  // Diagnostics: a copyable report of what the driver sees.
-  await panel.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: `chrome-extension://${new URL(panel.url()).host}` }).catch(() => {});
-  await panel.click('details:has(#log) > summary');
+  // Diagnostics
+  await panel.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(panel.url()).origin }).catch(() => {});
+  await panel.click('#logCard > summary');
   await panel.click('#copyDiagnosticsBtn');
   await panel.waitForFunction(() => /Diagnostics copied/.test(document.querySelector('#log').textContent));
 
-  await panel.click('[data-mode="text"]');
-  if (query.includes('legacy')) await panel.screenshot({ path: join(root, 'docs', 'screenshot-panel.png'), fullPage: true }).catch(() => {});
+  await panel.click('#modeTabs [data-mode="text"]');
+  await panel.evaluate(() => { document.querySelector('#logCard').open = false; });
+  await panel.screenshot({ path: join(root, 'docs', 'screenshot-panel.png'), fullPage: true }).catch(() => {});
   assert.deepEqual(consoleErrors, []);
   await context.close();
 }
 
-for (const layout of LAYOUTS) await testDriver(layout);
-await testDriverUnknownLabels();
-for (const layout of LAYOUTS) await testExtension(layout);
+await testAgent();
+await testExtension();
+console.log('all e2e tests passed');

@@ -1,45 +1,81 @@
 {
   "extName": {
-    "message": "ChatGPT Automation - 自動 ChatGPT"
+    "message": "ChatGPT Automation - ChatGPT 自動化"
   },
   "extDescription": {
-    "message": "大量のプロンプトを自動で ChatGPT に。ChatGPT.com で回答と画像を一括生成し、自動ダウンロードします。"
+    "message": "大量のプロンプトを ChatGPT で自動実行。ChatGPT.com の回答と画像を一括生成・自動ダウンロード。"
   },
   "appTitle": {
     "message": "ChatGPT Automation"
   },
+  "openInWindow": {
+    "message": "別ウィンドウで開く"
+  },
+  "tabControl": {
+    "message": "コントロール"
+  },
+  "tabSetting": {
+    "message": "設定"
+  },
   "modeHeading": {
     "message": "モード"
   },
-  "modeText": {
-    "message": "テキスト"
+  "mode_text": {
+    "message": "テキスト処理"
   },
-  "modeTextToImage": {
-    "message": "テキスト → 画像"
-  },
-  "modeImageToImage": {
-    "message": "画像 → 画像"
-  },
-  "modeIngredients": {
+  "mode_ingredients": {
     "message": "素材 → テキスト"
   },
+  "mode_textToImage": {
+    "message": "テキスト → 画像"
+  },
+  "mode_imageToImage": {
+    "message": "画像 → 画像"
+  },
+  "modeShort_text": {
+    "message": "テキスト"
+  },
+  "modeShort_ingredients": {
+    "message": "素材"
+  },
+  "modeShort_textToImage": {
+    "message": "テキスト → 画像"
+  },
+  "modeShort_imageToImage": {
+    "message": "画像 → 画像"
+  },
   "modeHint_text": {
-    "message": "キュー内の各プロンプトに対してテキストの回答を生成します。"
-  },
-  "modeHint_textToImage": {
-    "message": "テキストの説明から画像を生成します。生成された画像はすべてダウンロードされます。"
-  },
-  "modeHint_imageToImage": {
-    "message": "各プロンプトを元画像と一緒に送信し、画像を変換・補正します。"
+    "message": "プロンプトごとにテキストの回答を生成します。"
   },
   "modeHint_ingredients": {
-    "message": "各プロンプトに参考画像を添付して送信し、テキストの回答を集めます。"
+    "message": "各プロンプトに画像を添えて送り、テキストの回答を集めます。"
   },
-  "concatLabel": {
-    "message": "連結モード（Concat）"
+  "modeHint_textToImage": {
+    "message": "テキストから画像を生成し、生成した画像はすべてダウンロードされます。"
   },
-  "concatHint": {
-    "message": "すべてのプロンプトを 1 つの会話で実行し、前の回答を引き継ぎます。最後にまとめたファイルを保存します。"
+  "modeHint_imageToImage": {
+    "message": "各プロンプトを元画像と一緒に送り、画像を変換します。"
+  },
+  "uploadImages": {
+    "message": "画像をアップロード"
+  },
+  "ingredientImages": {
+    "message": "画像 / 素材"
+  },
+  "sourceImages": {
+    "message": "元画像"
+  },
+  "clear": {
+    "message": "クリア"
+  },
+  "remove": {
+    "message": "削除"
+  },
+  "autoAddCharacters": {
+    "message": "キャラクター画像を自動追加"
+  },
+  "autoAddCharactersHint": {
+    "message": "ファイル名がプロンプトに含まれる画像を添付します：hero.png は「hero」を含むプロンプトに添付されます。"
   },
   "aspectRatio": {
     "message": "アスペクト比"
@@ -47,119 +83,89 @@
   "aspectNone": {
     "message": "指定しない"
   },
-  "saveTextWithImages": {
-    "message": "テキストの回答も保存"
-  },
-  "chainLabel": {
-    "message": "チェーンモード（Chain）"
-  },
-  "chainHint": {
-    "message": "前のプロンプトで生成された画像を次のプロンプトの入力として使います。"
-  },
-  "sourceImages": {
-    "message": "元画像"
-  },
-  "addImages": {
-    "message": "画像を追加"
-  },
-  "clear": {
-    "message": "クリア"
-  },
-  "autoMatchLabel": {
-    "message": "ファイル名で画像を自動追加"
-  },
-  "autoMatchHint": {
-    "message": "ファイル名がプロンプト内に含まれる画像だけを添付します（例：Alice に触れるプロンプトには \"alice.png\"）。オフ＝すべて添付。"
-  },
-  "referenceImages": {
-    "message": "参考画像"
-  },
   "promptsHeading": {
     "message": "プロンプト"
   },
   "promptsPlaceholder": {
-    "message": "1 行に 1 つのプロンプト…\n\n複数行のプロンプトは空行で区切ります。"
+    "message": "プロンプトを入力。プロンプトの間は空行で区切ります。"
   },
-  "promptsHint": {
-    "message": "1 行に 1 プロンプト。空行がある場合は、各ブロックが 1 プロンプトになります。"
+  "uploadTxt": {
+    "message": "または .txt ファイルをアップロード"
   },
-  "addToQueue": {
-    "message": "キューに追加"
+  "promptCount": {
+    "message": "プロンプト {0} 件"
   },
-  "importFile": {
-    "message": ".txt / .csv を読み込む"
+  "concurrency": {
+    "message": "同時プロンプト数"
   },
-  "settingsHeading": {
-    "message": "設定"
+  "promptDelay": {
+    "message": "プロンプト間隔（秒）"
   },
-  "minDelay": {
-    "message": "最小待機（秒）"
+  "randomDelay": {
+    "message": "ランダム待機（秒）"
   },
-  "maxDelay": {
-    "message": "最大待機（秒）"
+  "saveToFolder": {
+    "message": "保存フォルダー"
   },
-  "maxRetries": {
-    "message": "最大リトライ回数"
+  "autoRename": {
+    "message": "ファイル名を自動変更"
   },
-  "timeoutMinutes": {
-    "message": "プロンプトごとのタイムアウト（分）"
-  },
-  "newChatPerPrompt": {
-    "message": "プロンプトごとに新しいチャット"
-  },
-  "newChatOnStart": {
-    "message": "実行開始時に新しいチャット"
-  },
-  "autoDownload": {
-    "message": "結果を自動ダウンロード"
-  },
-  "projectFolder": {
-    "message": "プロジェクトフォルダ"
-  },
-  "renameByPrompt": {
-    "message": "プロンプトからファイル名を付ける"
-  },
-  "queueHeading": {
-    "message": "キュー"
-  },
-  "start": {
-    "message": "開始"
-  },
-  "resume": {
-    "message": "再開"
-  },
-  "pause": {
-    "message": "一時停止"
+  "run": {
+    "message": "実行"
   },
   "stop": {
     "message": "停止"
   },
+  "fixError": {
+    "message": "エラー修正"
+  },
+  "enableBackground": {
+    "message": "バックグラウンドモードを有効化"
+  },
+  "runningInBackground": {
+    "message": "バックグラウンドで実行中"
+  },
+  "backgroundHint": {
+    "message": "タブが隠れているとブラウザーは chatgpt.com を一時停止します。バックグラウンドモードは chatgpt.com のタブを共有して（ダイアログで選択）、他のウィンドウの裏でも動作させます。何も録画・送信しません。"
+  },
+  "queueHeading": {
+    "message": "キュー"
+  },
+  "countsLine": {
+    "message": "{0}/{1} 完了 · 失敗 {2} · 拒否 {3}"
+  },
   "retryFailed": {
-    "message": "失敗分を再実行"
+    "message": "失敗を再試行"
   },
   "resetAll": {
-    "message": "すべてリセット"
+    "message": "すべて再実行"
   },
   "clearQueue": {
-    "message": "キューを空にする"
+    "message": "キューをクリア"
   },
-  "keepPanelOpen": {
-    "message": "キューの実行中はこのパネルを開いたままにしてください。chatgpt.com へのログインが必要です。"
+  "confirmClearAgain": {
+    "message": "もう一度クリックで消去"
   },
   "queueEmpty": {
-    "message": "プロンプトがありません。上で追加してください。"
+    "message": "プロンプトはまだありません。"
   },
-  "logHeading": {
-    "message": "アクティビティログ"
+  "keepPanelOpen": {
+    "message": "キューの実行中はこのパネルを開いたままにしてください。閉じた場合は「実行」で続きから再開します。"
   },
   "openChat": {
     "message": "チャットを開く"
   },
   "rerun": {
-    "message": "もう一度実行"
+    "message": "再実行"
   },
-  "remove": {
-    "message": "削除"
+  "optionToggleHint": {
+    "message": "クリックで切り替え"
+  },
+  "retriesCount": {
+    "message": "再試行 {0}/{1}"
+  },
+  "imagesCount": {
+    "message": "画像 {0} 枚"
   },
   "status_queued": {
     "message": "待機中"
@@ -173,160 +179,241 @@
   "status_failed": {
     "message": "失敗"
   },
-  "retriesCount": {
-    "message": "リトライ {0}/{1}"
-  },
-  "imagesCount": {
-    "message": "画像 {0} 枚"
-  },
-  "countsLine": {
-    "message": "完了 {0}/{1} · 実行中 {2} · 待機 {3} · 失敗 {4} · 拒否 {5} · {6}%"
-  },
-  "runnerIdle": {
-    "message": "待機"
-  },
-  "runnerRunning": {
-    "message": "実行中…"
-  },
-  "runnerPausing": {
-    "message": "このプロンプトの後に一時停止…"
-  },
-  "runnerWaiting": {
-    "message": "次のプロンプトまで {0} 秒"
-  },
-  "samplePrompt": {
-    "message": "雪の中の居心地のよい小屋"
-  },
-  "downloadsFolder": {
-    "message": "ダウンロード"
-  },
-  "confirmClear": {
-    "message": "キューからすべてのプロンプトを削除しますか？"
-  },
-  "logStarted": {
-    "message": "キューを開始しました。"
-  },
-  "logFinished": {
-    "message": "キューが完了しました。"
-  },
-  "logPausing": {
-    "message": "現在のプロンプトの後に一時停止します。"
-  },
-  "logStopped": {
-    "message": "停止しました。"
-  },
-  "logRunning": {
-    "message": "プロンプト #{0} を実行中…"
-  },
-  "logCompleted": {
-    "message": "プロンプト #{0} が完了しました。"
-  },
-  "logRetrying": {
-    "message": "プロンプト #{0} 失敗：{1} — 再試行します（{2}/{3}）。"
-  },
-  "logFailed": {
-    "message": "プロンプト #{0} 失敗：{1} — {2} 回試行して中止しました。"
-  },
-  "logDownloaded": {
-    "message": "{0} を保存しました"
-  },
-  "logDownloadFailed": {
-    "message": "{0} を保存できません：{1}"
-  },
-  "logFatal": {
-    "message": "実行を停止しました：{0}"
-  },
-  "logAdded": {
-    "message": "{0} 件のプロンプトをキューに追加しました。"
-  },
-  "logNoPrompts": {
-    "message": "プロンプトが見つかりません。"
-  },
-  "singleChat": {
-    "message": "すべてを 1 つのチャットにまとめる"
-  },
-  "singleChatHint": {
-    "message": "キューのすべてのプロンプトを 1 つの ChatGPT 会話で実行します。中断された場合は、そのチャットに戻り、止まったところから続行します。"
-  },
-  "refusalRetries": {
-    "message": "拒否時のリトライ回数"
-  },
-  "sessionChat": {
-    "message": "セッションチャット："
-  },
-  "sessionNone": {
-    "message": "最初のプロンプトで開始"
-  },
-  "newSessionChat": {
-    "message": "新しいセッションチャット"
-  },
   "status_refused": {
     "message": "拒否"
   },
-  "logRefused": {
-    "message": "プロンプト #{0} は ChatGPT に拒否されました — 再試行中（{1}/{2}）。"
+  "phase_starting": {
+    "message": "チャットを準備中"
   },
-  "logRefusedSkip": {
-    "message": "プロンプト #{0} は ChatGPT に拒否されました — スキップして次のプロンプトへ進みます。"
+  "phase_typing": {
+    "message": "送信中"
   },
-  "logResumed": {
-    "message": "プロンプト #{0} は中断前に送信済みでした — 再送せずに回答を取得しました。"
+  "phase_sent": {
+    "message": "送信済み"
   },
-  "logSessionLost": {
-    "message": "セッションチャットを開けませんでした — 新しいチャットで続行します。"
+  "phase_replying": {
+    "message": "回答中"
   },
-  "logReturningToChat": {
-    "message": "セッションチャットに戻っています…"
+  "phase_image": {
+    "message": "画像を生成中"
   },
-  "logNewSession": {
-    "message": "次の実行では新しいセッションチャットを開始します。"
+  "phase_nudged": {
+    "message": "画像を依頼済み"
   },
-  "logTimings": {
-    "message": "プロンプト #{0}：チャット準備 {1} 秒、回答 {2} 秒。"
-  },
-  "keepTabActive": {
-    "message": "実行中は ChatGPT タブを前面に保つ"
-  },
-  "keepTabActiveHint": {
-    "message": "ブラウザーはバックグラウンドのタブを低速化するため、ChatGPT の返信が止まることがあります。各プロンプトの前にタブをウィンドウの前面に戻します（フォーカスは移動しません）。"
+  "logHeading": {
+    "message": "アクティビティログ"
   },
   "copyDiagnostics": {
     "message": "診断情報をコピー"
   },
   "copyDiagnosticsHint": {
-    "message": "うまく動かない場合は ChatGPT を開いて「診断情報をコピー」を押し、結果を不具合報告に貼り付けてください。"
+    "message": "拡張機能が ChatGPT ページで見ている状態をコピーします（プロンプトや回答の本文は含みません）。バグ報告に貼り付けてください。"
   },
-  "openInWindow": {
-    "message": "別ウィンドウで開く"
+  "language": {
+    "message": "言語"
   },
-  "logSent": {
-    "message": "プロンプト #{0}: 送信しました。返信を待っています…"
+  "defaultMode": {
+    "message": "デフォルトモード"
   },
-  "logWaitingForImage": {
-    "message": "プロンプト #{0}: 画像を待っています…"
+  "textOutputs": {
+    "message": "プロンプトごとの出力数（テキスト）"
   },
-  "logTabHidden": {
-    "message": "ChatGPT タブが非表示です（ウィンドウが最小化されていませんか？）。ウィンドウを表示したままにしないと返信が止まることがあります。"
+  "imageOutputs": {
+    "message": "プロンプトごとの出力数（画像）"
   },
-  "logTabActivated": {
-    "message": "ChatGPT タブを前面に戻しました。"
+  "textModel": {
+    "message": "テキストモデル"
   },
-  "logAlreadyRunning": {
-    "message": "別のパネルがすでにキューを実行中です。そちらを使うか、先に停止してください。"
+  "imageModel": {
+    "message": "画像モデル"
+  },
+  "modelDefault": {
+    "message": "ChatGPT の現在のモデル"
+  },
+  "modelHint": {
+    "message": "空欄なら ChatGPT で選択中のモデルのまま。指定する場合は chatgpt.com/?model=… のモデル ID（例：gpt-5）。"
+  },
+  "defaultPromptMode": {
+    "message": "デフォルトのプロンプトモード"
+  },
+  "defaultImageMode": {
+    "message": "デフォルトの画像モード"
+  },
+  "chatMode_new": {
+    "message": "新しいチャット"
+  },
+  "chatMode_concat": {
+    "message": "連結"
+  },
+  "imageMode_new": {
+    "message": "新しい画像"
+  },
+  "imageMode_last": {
+    "message": "前の画像"
+  },
+  "promptModeHint": {
+    "message": "連結：次のプロンプトを同じチャットで続けます。前の画像：前のプロンプトで生成した画像をこのプロンプトの入力にします。キューのタグをクリックで変更できます。"
+  },
+  "maxIngredientImages": {
+    "message": "プロンプトごとの最大画像数（素材）"
+  },
+  "maxImageInputs": {
+    "message": "プロンプトごとの最大画像数（画像 → 画像）"
+  },
+  "maxRetries": {
+    "message": "失敗時の最大再試行"
+  },
+  "timeoutMinutes": {
+    "message": "プロンプトごとのタイムアウト（分）"
+  },
+  "textDownload": {
+    "message": "自動ダウンロード（テキスト）"
+  },
+  "imageDownload": {
+    "message": "自動ダウンロード品質（画像）"
+  },
+  "noDownload": {
+    "message": "ダウンロードしない"
+  },
+  "downloadMd": {
+    "message": "Markdown (.md)"
+  },
+  "downloadTxt": {
+    "message": "プレーンテキスト (.txt)"
+  },
+  "downloadOriginal": {
+    "message": "オリジナル (1k)"
+  },
+  "keepTabActive": {
+    "message": "実行中は ChatGPT タブを前面に保つ"
+  },
+  "keepTabActiveHint": {
+    "message": "1 件ずつ実行するときは、各プロンプトの前に ChatGPT タブをウィンドウの前面に出します。"
+  },
+  "samplePrompt": {
+    "message": "雪の中の居心地のいい小屋"
+  },
+  "downloadsFolder": {
+    "message": "ダウンロード"
+  },
+  "runnerIdle": {
+    "message": "待機"
+  },
+  "runnerRunning": {
+    "message": "実行中（{0}）"
+  },
+  "runnerWaiting": {
+    "message": "{0} 秒後に次へ"
+  },
+  "runnerStopping": {
+    "message": "停止中…"
+  },
+  "logAdded": {
+    "message": "プロンプトを {0} 件追加（キュー {1} 件）"
+  },
+  "logNoPrompts": {
+    "message": "まずプロンプトを 1 件以上入力してください。"
+  },
+  "logNeedSourceImages": {
+    "message": "画像 → 画像には元画像が 1 枚以上必要です。先にアップロードしてください。"
   },
   "logNeedHostAccess": {
-    "message": "実行するには chatgpt.com へのアクセス許可が必要です。もう一度「開始」を押して許可してください。"
+    "message": "キューを実行するには chatgpt.com へのアクセスを許可してください。"
   },
-  "logDiagnostics": {
-    "message": "ページの確認: {0}"
+  "logStarted": {
+    "message": "キューを開始"
   },
-  "logDiagnosticsCopied": {
-    "message": "診断情報をクリップボードにコピーしました。不具合報告に貼り付けてください。"
+  "logAlreadyRunning": {
+    "message": "キューは別のパネルで実行中です。"
   },
-  "confirmClearAgain": {
-    "message": "もう一度クリックで空にする"
+  "logFatal": {
+    "message": "エラーで停止しました：{0}"
+  },
+  "logFinished": {
+    "message": "キューが完了しました"
+  },
+  "logStopped": {
+    "message": "停止しました。「実行」で続きから再開します。"
+  },
+  "logFixing": {
+    "message": "エラー修正：ChatGPT を停止し、ダイアログを閉じてチャットを再読み込み"
+  },
+  "logFixed": {
+    "message": "プロンプト {0} を再実行します"
+  },
+  "logSequential": {
+    "message": "連結 / 前の画像のプロンプトは 1 件ずつ実行します。"
+  },
+  "logOpenedTabs": {
+    "message": "ChatGPT タブを {0} 個追加で開きました"
+  },
+  "logRunning": {
+    "message": "プロンプト {0}：開始"
+  },
+  "logSent": {
+    "message": "プロンプト {0}：送信済み、回答を待っています"
+  },
+  "logWaitingForImage": {
+    "message": "プロンプト {0}：ChatGPT が画像を生成中"
   },
   "logNudged": {
-    "message": "プロンプト #{0}：ChatGPT が画像なしで回答 — 今すぐ画像を生成するよう一度依頼しました。"
+    "message": "プロンプト {0}：画像なしで回答したため、画像の生成を依頼しました"
+  },
+  "logNote": {
+    "message": "プロンプト {0}：{1}"
+  },
+  "logPageCheck": {
+    "message": "プロンプト {0}：ページ確認 — {1}"
+  },
+  "logResumed": {
+    "message": "プロンプト {0}：中断前に送信済みのため、再送せず回答を取得しました"
+  },
+  "logCompleted": {
+    "message": "プロンプト {0}：{1} 秒で完了（{2}）"
+  },
+  "logRefused": {
+    "message": "プロンプト {0}：ChatGPT に拒否されました — もう一度試します"
+  },
+  "logRefusedSkip": {
+    "message": "プロンプト {0}：ChatGPT に拒否されました — スキップ"
+  },
+  "logRetrying": {
+    "message": "プロンプト {0}：{1} — 再試行 {2}/{3}"
+  },
+  "logInterrupted": {
+    "message": "プロンプト {0}：{1} — 次の試行で回答を取得します"
+  },
+  "logFailed": {
+    "message": "プロンプト {0}：失敗 — {1}（再試行 {2}/{3}）"
+  },
+  "logDiagnostics": {
+    "message": "ページ：{0}"
+  },
+  "logReturningToChat": {
+    "message": "プロンプトのチャットに戻ります"
+  },
+  "logTabActivated": {
+    "message": "ChatGPT タブを前面に出しました"
+  },
+  "logTabHidden": {
+    "message": "ChatGPT タブが隠れています。止まる場合はバックグラウンドモードを使うか、タブを表示したままにしてください。"
+  },
+  "logDownloaded": {
+    "message": "保存しました {0}"
+  },
+  "logDownloadFailed": {
+    "message": "{0} を保存できません：{1}"
+  },
+  "logBackgroundOn": {
+    "message": "バックグラウンドモード オン"
+  },
+  "logBackgroundOff": {
+    "message": "バックグラウンドモード オフ"
+  },
+  "logBackgroundFailed": {
+    "message": "バックグラウンドモードを開始できません：{0}。パネルを別ウィンドウで開くと動く場合があります（ツールバーボタンを右クリック）。"
+  },
+  "logDiagnosticsCopied": {
+    "message": "診断情報をクリップボードにコピーしました"
   }
 }
