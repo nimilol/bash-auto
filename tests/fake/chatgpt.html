@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fake ChatGPT</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  [contenteditable] { border: 1px solid #999; min-height: 40px; padding: 6px; white-space: pre-wrap; }
+  article { border-bottom: 1px solid #ddd; padding: 8px 0; }
+  button { margin-top: 6px; min-width: 24px; min-height: 24px; }
+  img.gen { width: 256px; height: 256px; display: block; }
+  .preview { filter: blur(8px); }
+</style>
+</head>
+<body>
+  <!--
+    Imitates chatgpt.com for tests/e2e/run.mjs, with tests/fake/server.mjs as the backend.
+    Like the real site it sends a prompt with fetch('/backend-api/f/conversation'), shows Stop until
+    the reply stream closes, moves to /c/<id>, and draws the thread from
+    GET /backend-api/conversation/<id>, polling while an image or a handed-off reply is still coming.
+    While an image is being made it shows a "Creating image" shimmer, or a blurred preview.
+    "New chat" is client-side. A spinner and a progress bar in the nav must not be taken for an upload.
+  -->
+  <nav>
+    <a href="/" data-testid="create-new-chat-button" id="newChat">New chat</a>
+    <svg class="animate-spin" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" stroke="#999" fill="none" stroke-dasharray="20 10"/></svg>
+  </nav>
+  <main id="thread"></main>
+  <form id="composerForm" onsubmit="return false">
+    <input type="file" accept="image/*" multiple hidden id="upload" />
+    <div id="attachments"></div>
+    <div id="prompt-textarea" contenteditable="true" class="ProseMirror" role="textbox"></div>
+    <button type="button" id="voice" aria-label="Start voice mode" data-testid="composer-speech-button">🎤</button>
+    <button type="button" id="send" data-testid="send-button" aria-label="Send prompt">↑</button>
+  </form>
+<script>
+  const thread = document.getElementById('thread');
+  const box = document.getElementById('prompt-textarea');
+  const send = document.getElementById('send');
+  const upload = document.getElementById('upload');
+  let convId = (location.pathname.match(/\/c\/([\w-]+)/) || [])[1] || null;
+  let attached = [];
+  let generating = null;
+  let pendingText = false;
+  let pollTimer = null;
+  const count = (k) => localStorage.setItem(k, String(Number(localStorage.getItem(k) || 0) + 1));
+
+  let token = '';
+  const auth = async () => {
+    if (!token) token = (await (await fetch('/api/auth/session')).json()).accessToken;
+    return { authorization: `Bearer ${token}` };
+  };
+
+  document.getElementById('voice').addEventListener('click', () => count('wrongClicks'));
+  send.addEventListener('click', () => {
+    if (generating || pendingText) {
+      generating?.abort();
+      count('stoppedReplies');
+      return;
+    }
+    doSend();
+  });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !generating) { e.preventDefault(); doSend(); }
+  });
+  upload.addEventListener('change', () => {
+    attached = [...upload.files].map((f) => f.name);
+    document.getElementById('attachments').textContent = attached.join(', ');
+  });
+  document.getElementById('newChat').addEventListener('click', (e) => {
+    e.preventDefault();
+    history.pushState(null, '', '/');
+    convId = null;
+    clearTimeout(pollTimer);
+    pendingText = false;
+    setGenerating(generating);
+    thread.replaceChildren();
+  });
+
+  function setGenerating(ctrl) {
+    generating = ctrl;
+    const busy = !!ctrl || pendingText;
+    send.dataset.testid = busy ? 'stop-button' : 'send-button';
+    send.setAttribute('aria-label', busy ? 'Stop streaming' : 'Send prompt');
+    send.textContent = busy ? '■' : '↑';
+  }
+
+  function article(role, text) {
+    const a = document.createElement('article');
+    a.dataset.turn = role;
+    a.dataset.testid = `conversation-turn-${thread.children.length + 1}`;
+    const body = document.createElement('div');
+    if (role === 'assistant') body.className = 'markdown';
+    body.textContent = text;
+    a.append(body);
+    thread.append(a);
+    return a;
+  }
+
+  function image(pointer, preview) {
+    const img = document.createElement('img');
+    img.alt = 'Generated image';
+    img.className = preview ? 'gen preview' : 'gen';
+    img.src = `/backend-api/estuary/content?id=${pointer.replace(/^.*:\/\//, '')}`;
+    return img;
+  }
+
+  async function refresh() {
+    clearTimeout(pollTimer);
+    if (!convId) return;
+    const id = convId;
+    let res;
+    try {
+      res = await fetch(`/backend-api/conversation/${id}`, { headers: await auth() });
+    } catch {
+      pollTimer = setTimeout(refresh, 2000); // offline: keep trying
+      return false;
+    }
+    if (id !== convId) return;
+    if (!res.ok) return false;
+    const conv = await res.json();
+    const msgs = [];
+    for (let n = conv.mapping[conv.current_node]; n; n = conv.mapping[n.parent]) if (n.message) msgs.unshift(n.message);
+    thread.replaceChildren();
+    let pending = false;
+    pendingText = false;
+    let reply = null;
+    for (const m of msgs) {
+      if (m.author.role === 'user') { article('user', m.content.parts.join('\n')); reply = null; continue; }
+      const parts = m.content.parts || [];
+      const text = m.author.role === 'assistant' && m.recipient === 'all' ? parts.filter((p) => typeof p === 'string').join('') : '';
+      const images = parts.filter((p) => p && p.content_type === 'image_asset_pointer');
+      const task = m.author.role === 'tool' && m.metadata?.image_gen_async;
+      const waiting = task && (!images.length || m.status === 'in_progress');
+      if (m.author.role === 'assistant' && m.status === 'in_progress') { pendingText = true; pending = true; }
+      if (waiting) pending = true;
+      if (m.metadata?.page_error) {
+        if (!reply) reply = article('assistant', '');
+        const e = document.createElement('div');
+        e.className = 'text-token-text-error';
+        e.textContent = m.metadata.page_error;
+        reply.append(e);
+        continue;
+      }
+      if (!text && !images.length && !(waiting && !m.metadata.hide)) continue;
+      if (!reply) reply = article('assistant', '');
+      if (text) reply.firstChild.textContent += text;
+      for (const p of images) reply.append(image(p.asset_pointer, !!p.metadata?.generation?.partial));
+      if (waiting && !images.length && !m.metadata.hide) {
+        const s = document.createElement('div');
+        s.className = 'animate-pulse';
+        s.textContent = 'Creating image';
+        reply.append(s);
+      }
+    }
+    if (reply && !pending) {
+      const bar = document.createElement('div');
+      bar.innerHTML = '<button type="button" aria-label="Copy" data-testid="copy-turn-action-button">⧉</button>';
+      reply.append(bar);
+    }
+    setGenerating(generating);
+    if (pending) pollTimer = setTimeout(refresh, 1000);
+    return true;
+  }
+  refresh();
+
+  /** When the conversation can't be read: draw the reply from the stream itself, like the real page. */
+  function drawFromStream(text) {
+    const reply = article('assistant', '');
+    for (const block of text.split('\n\n')) {
+      const data = block.split('\n').find((l) => l.startsWith('data: '))?.slice(6);
+      let ev;
+      try { ev = JSON.parse(data); } catch { continue; }
+      if (typeof ev?.v === 'string') reply.firstChild.textContent += ev.v;
+      for (const p of ev?.v?.message?.content?.parts || []) if (p?.asset_pointer) reply.append(image(p.asset_pointer, false));
+    }
+    const bar = document.createElement('div');
+    bar.innerHTML = '<button type="button" aria-label="Copy" data-testid="copy-turn-action-button">⧉</button>';
+    reply.append(bar);
+  }
+
+  async function doSend() {
+    const prompt = box.innerText.trim();
+    if (!prompt || generating) return;
+    box.innerHTML = '';
+    const files = attached;
+    attached = [];
+    document.getElementById('attachments').textContent = '';
+    article('user', prompt);
+    const ctrl = new AbortController();
+    setGenerating(ctrl);
+    let streamText = '';
+    const body = {
+      action: 'next',
+      messages: [{ id: crypto.randomUUID(), author: { role: 'user' }, content: { content_type: 'text', parts: [prompt] }, metadata: { attachments: files.map((name) => ({ name })) } }],
+      conversation_id: convId || undefined,
+      model: new URLSearchParams(location.search).get('model') || 'auto',
+    };
+    try {
+      const res = await fetch('/backend-api/f/conversation', {
+        method: 'POST', headers: { ...(await auth()), 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal,
+      });
+      const text = await res.text();
+      streamText = text;
+      const id = (/"conversation_id":\s*"([^"]+)"/.exec(text) || [])[1];
+      if (id && !convId) {
+        convId = id;
+        history.pushState(null, '', `/c/${id}`);
+      }
+      const err = /"error":\s*"([^"]+)"/.exec(text)?.[1] || (!res.ok && JSON.parse(text).detail);
+      if (err) {
+        const banner = document.createElement('div');
+        banner.className = 'text-token-text-error';
+        banner.textContent = err;
+        thread.append(banner);
+        return;
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        const banner = document.createElement('div');
+        banner.setAttribute('role', 'alert');
+        banner.textContent = 'Network error. Check your connection.';
+        thread.append(banner);
+      }
+      return;
+    } finally {
+      setGenerating(null);
+    }
+    if (!(await refresh())) drawFromStream(streamText);
+  }
+</script>
+</body>
+</html>

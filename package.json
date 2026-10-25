@@ -1,0 +1,14 @@
+{
+  "name": "bash-auto",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Chrome extension that queues prompts into one ChatGPT chat and saves the generated images",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "check": "node scripts/check.mjs",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test:all": "npm test && npm run check && npm run test:e2e",
+    "package": "node scripts/package.mjs"
+  }
+}

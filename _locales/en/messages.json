@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "bash-auto — ChatGPT Image Automation" },
+  "extDescription": { "message": "Queue prompts into one ChatGPT chat, wait for every image to finish, and save the results automatically." }
+}

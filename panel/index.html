@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bash-auto</title>
+<link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <img src="../icons/icon32.png" alt="" width="20" height="20" />
+    <span>bash-auto</span>
+  </div>
+  <span id="statePill" class="pill" data-state="idle">Idle</span>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" id="tab-run" data-tab="run" aria-selected="true">Run</button>
+  <button role="tab" id="tab-settings" data-tab="settings" aria-selected="false">Settings</button>
+  <button role="tab" id="tab-activity" data-tab="activity" aria-selected="false">Activity <span id="logBadge" class="badge" hidden></span></button>
+</nav>
+
+<main>
+  <!-- ============================== Run ============================== -->
+  <section id="page-run" class="page">
+    <div id="banner" class="banner" hidden>
+      <p id="bannerText"></p>
+      <button id="bannerAction" class="btn small" hidden></button>
+    </div>
+
+    <div class="card">
+      <div class="segmented" id="modes" role="radiogroup" aria-label="Mode">
+        <button data-mode="textToImage" role="radio">Text → Image</button>
+        <button data-mode="imageToImage" role="radio">Image → Image</button>
+        <button data-mode="text" role="radio">Text</button>
+        <button data-mode="ingredients" role="radio">Images → Text</button>
+      </div>
+      <p id="modeHint" class="hint"></p>
+
+      <div id="assets" class="assets" hidden>
+        <div class="row between">
+          <span id="assetsTitle" class="label">Source images</span>
+          <span class="row gap">
+            <label class="btn small ghost">Add images<input id="assetInput" type="file" accept="image/*" multiple hidden /></label>
+            <button id="clearAssets" class="btn small ghost">Remove all</button>
+          </span>
+        </div>
+        <div id="assetThumbs" class="thumbs"></div>
+      </div>
+
+      <label class="label" for="prompts">Prompts</label>
+      <textarea id="prompts" rows="7" spellcheck="false" placeholder="One prompt per line.&#10;&#10;For prompts that span several lines, leave a blank line between prompts."></textarea>
+      <div class="row between">
+        <span id="promptCount" class="hint"></span>
+        <label class="btn small ghost">Import .txt / .csv<input id="importFile" type="file" accept=".txt,.csv,text/plain,text/csv" hidden /></label>
+      </div>
+
+      <div class="grid2">
+        <label class="field" data-images-only>
+          <span>Aspect ratio</span>
+          <select data-setting="aspectRatio">
+            <option value="">ChatGPT decides</option>
+            <option value="1:1">Square 1:1</option>
+            <option value="16:9">Landscape 16:9</option>
+            <option value="9:16">Portrait 9:16</option>
+            <option value="4:3">Landscape 4:3</option>
+            <option value="3:4">Portrait 3:4</option>
+            <option value="3:2">Landscape 3:2</option>
+            <option value="2:3">Portrait 2:3</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Chat</span>
+          <select data-setting="chatPolicy">
+            <option value="same">One chat for all prompts</option>
+            <option value="perPrompt">New chat for each prompt</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="chatLine" class="chatline">
+        <span id="chatText"></span>
+        <span class="row gap">
+          <a id="chatLink" href="#" target="_blank" rel="noopener" hidden>Open chat</a>
+          <button id="newChatBtn" class="btn small ghost" title="The next prompt starts a new chat; the prompts after it continue there">Start new chat</button>
+        </span>
+      </div>
+
+      <div class="actions">
+        <button id="runBtn" class="btn primary">Run</button>
+        <button id="stopBtn" class="btn">Stop</button>
+        <button id="recoverBtn" class="btn ghost" title="Reload the ChatGPT tab and pick the current prompt up again. Nothing is sent twice.">Recover</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between">
+        <span class="label">Queue</span>
+        <span id="counts" class="hint"></span>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div id="runInfo" class="hint"></div>
+      <ol id="queue" class="queue"></ol>
+      <p id="queueEmpty" class="empty">No prompts yet. Type or import prompts above and press Run.</p>
+      <div class="row gap wrap">
+        <button id="retryFailedBtn" class="btn small ghost">Retry failed</button>
+        <button id="resetBtn" class="btn small ghost">Reset all</button>
+        <button id="clearBtn" class="btn small ghost">Clear queue</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== Settings ============================== -->
+  <section id="page-settings" class="page" hidden>
+    <div class="card">
+      <h2>Chat</h2>
+      <label class="field">
+        <span>Prompts go to</span>
+        <select data-setting="chatPolicy">
+          <option value="same">One chat for all prompts (recommended)</option>
+          <option value="perPrompt">A new chat for each prompt</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>First prompt of a run</span>
+        <select data-setting="startIn">
+          <option value="new">Opens a new chat</option>
+          <option value="current">Goes into the chat open in the ChatGPT tab</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Model (optional)</span>
+        <input data-setting="model" type="text" placeholder="Leave empty to use ChatGPT's current model" />
+        <small>Used when a new chat is opened, as in chatgpt.com/?model=…</small>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>Images</h2>
+      <div class="grid2">
+        <label class="field"><span>Images per prompt</span><input data-setting="imageOutputs" type="number" min="1" max="50" /></label>
+        <label class="field"><span>Max input images</span><input data-setting="maxInputImages" type="number" min="1" max="10" /></label>
+      </div>
+      <label class="field">
+        <span>New prompts use</span>
+        <select data-setting="imageMode">
+          <option value="new">Only their own images</option>
+          <option value="last">The previous generated image ("Last image")</option>
+        </select>
+      </label>
+      <label class="check"><input data-setting="autoMatchImages" type="checkbox" /> Match uploaded images to prompts by file name (e.g. <code>hero.png</code> goes with prompts mentioning "hero")</label>
+      <div class="grid2">
+        <label class="field"><span>Wait for an image up to (min)</span><input data-setting="imageWaitMin" type="number" min="1" max="240" step="1" />
+          <small>Only while ChatGPT still shows it's working.</small></label>
+        <label class="field"><span>No-image wait (min)</span><input data-setting="noImageQuietMin" type="number" min="0.5" max="60" step="0.5" />
+          <small>How long nothing must happen before "no image".</small></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Text</h2>
+      <div class="grid2">
+        <label class="field"><span>Replies per prompt</span><input data-setting="textOutputs" type="number" min="1" max="10" /></label>
+        <label class="field"><span>Reply time limit (min)</span><input data-setting="textTimeoutMin" type="number" min="1" max="120" /></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pacing and retries</h2>
+      <div class="grid2">
+        <label class="field"><span>Delay between prompts, min (s)</span><input data-setting="minDelay" type="number" min="0" max="3600" /></label>
+        <label class="field"><span>max (s)</span><input data-setting="maxDelay" type="number" min="0" max="3600" /></label>
+      </div>
+      <label class="field"><span>Retries per prompt</span><input data-setting="maxRetries" type="number" min="0" max="20" />
+        <small>Connection drops and reloads never use up retries.</small></label>
+      <label class="check"><input data-setting="keepTabActive" type="checkbox" /> Bring the ChatGPT tab to the front before each prompt</label>
+    </div>
+
+    <div class="card">
+      <h2>Saving</h2>
+      <label class="field"><span>Folder in Downloads</span><input data-setting="folder" type="text" /></label>
+      <label class="check"><input data-setting="saveImages" type="checkbox" /> Save generated images</label>
+      <label class="field">
+        <span>Save text replies as</span>
+        <select data-setting="saveText">
+          <option value="md">Markdown (.md)</option>
+          <option value="txt">Plain text (.txt)</option>
+          <option value="none">Don't save</option>
+        </select>
+      </label>
+      <label class="check"><input data-setting="renameFiles" type="checkbox" /> Name files after the prompt</label>
+      <p class="hint">Example: <code id="filenamePreview"></code></p>
+      <p class="hint">If the browser asks where to save each file, turn off "Ask where to save each file" in its download settings.</p>
+    </div>
+  </section>
+
+  <!-- ============================== Activity ============================== -->
+  <section id="page-activity" class="page" hidden>
+    <div class="card">
+      <div class="row between">
+        <span class="label">Activity</span>
+        <span class="row gap">
+          <button id="copyDiagBtn" class="btn small ghost" title="Copies a troubleshooting report: run state, settings, what the extension sees on the ChatGPT page, and the activity log.">Copy diagnostics</button>
+          <button id="clearLogBtn" class="btn small ghost">Clear</button>
+        </span>
+      </div>
+      <ol id="log" class="log"></ol>
+    </div>
+  </section>
+</main>
+
+<template id="itemTpl">
+  <li class="qi">
+    <div class="qi-head">
+      <span class="qi-num"></span>
+      <span class="qi-prompt"></span>
+      <span class="chip"></span>
+    </div>
+    <div class="qi-thumbs"></div>
+    <div class="qi-meta">
+      <button class="tag qi-newchat" title="Start a new chat at this prompt (the following prompts continue there)"></button>
+      <button class="tag qi-imagemode" title="Send the previous generated image with this prompt"></button>
+      <span class="qi-extra"></span>
+      <span class="qi-tools">
+        <a class="qi-link" target="_blank" rel="noopener" hidden>chat</a>
+        <button class="qi-rerun" title="Run again">↻</button>
+        <button class="qi-remove" title="Remove">✕</button>
+      </span>
+    </div>
+    <p class="qi-error" hidden></p>
+  </li>
+</template>
+
+<script type="module" src="panel.js"></script>
+</body>
+</html>
